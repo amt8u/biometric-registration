@@ -463,3 +463,127 @@ function getSpreadsheetUrl(pw) {
   requireAdmin_(pw);
   return getSpreadsheet_().getUrl();
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// TEST / DIAGNOSTIC FUNCTIONS
+// Run these from the Apps Script editor (function picker → Run).
+// Each one logs its progress; open View → Executions to see the output.
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Uploads a tiny text file into the configured Drive root folder, then
+ * deletes it (trashes it). Verifies that DRIVE_ROOT_ID is correct and
+ * that the script-owner account can both read AND write to the folder.
+ */
+function testUpload() {
+  Logger.log('── testUpload ──────────────────────────────');
+  var root = getDriveRoot_();
+  Logger.log('Drive folder OK : ' + root.getName() + '  (' + root.getId() + ')');
+  Logger.log('Folder URL      : ' + root.getUrl());
+
+  var stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Kolkata', 'yyyyMMdd-HHmmss');
+  var blob  = Utilities.newBlob('Blue Ridge test upload @ ' + stamp, 'text/plain', '__test_' + stamp + '.txt');
+  var file  = root.createFile(blob);
+  Logger.log('Created file    : ' + file.getName() + '  (' + file.getId() + ')');
+  Logger.log('File URL        : ' + file.getUrl());
+
+  // Clean up — move to trash so the folder stays uncluttered.
+  file.setTrashed(true);
+  Logger.log('Trashed test file. ✔  Upload + write access confirmed.');
+  return { ok: true, folderId: root.getId(), folderUrl: root.getUrl() };
+}
+
+/**
+ * Submits a fake OWN registration end-to-end:
+ *   • writes rows to the Registrations + Family Members sheets
+ *   • creates the BIN folder in Drive and uploads a small dummy file
+ *   • generates the PDF certificate
+ *   • sends the confirmation email to the admin address only
+ *
+ * Uses a unique test BIN like TZZ-F9999-OWN so it doesn't collide.
+ * Note: this leaves a real row in the sheet and a real folder in Drive.
+ * Delete them manually (or via the Admin dashboard) after inspection.
+ */
+function testSubmission() {
+  Logger.log('── testSubmission ──────────────────────────');
+  var adminEmail = PropertiesService.getScriptProperties().getProperty(PROP.ADMIN_EMAIL) || DEFAULTS.ADMIN_EMAIL;
+  var stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Kolkata', 'HHmmss');
+  var flat  = '9' + stamp.slice(-3); // e.g. 9421
+  var bin   = 'TZZ-F' + flat + '-OWN';
+
+  // Tiny 1x1 PNG (base64) used for every "uploaded" file.
+  var onePxPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+  function dummyFile(name, mime) {
+    return { name: name, mimeType: mime || 'image/png', base64: onePxPng };
+  }
+
+  var payload = {
+    type: 'OWN',
+    tower: 'ZZ',
+    flat: flat,
+    residing: true,
+    bin: bin,
+    primary: {
+      name:    'Test Resident ' + stamp,
+      mobile:  '9999999999',
+      email:   adminEmail,
+      idType:  'Aadhaar Card',
+      idNo:    '0000 0000 0000',
+      files: {
+        indexii: dummyFile('IndexII.png'),
+        iddoc:   dummyFile('Aadhaar.png'),
+        photo:   dummyFile('Photo.png'),
+      },
+    },
+    members: [
+      {
+        name:  'Test Spouse ' + stamp,
+        idNo:  '1111 1111 1111',
+        files: { iddoc: dummyFile('Spouse_ID.png'), photo: dummyFile('Spouse_Photo.png') },
+      },
+    ],
+  };
+
+  Logger.log('Submitting BIN  : ' + bin);
+  var res = submitRegistration(payload);
+  Logger.log('Result          : ' + JSON.stringify(res));
+  Logger.log('✔  Check the sheet, Drive folder, and ' + adminEmail + '\'s inbox.');
+  Logger.log('   Delete the test row via Admin → Records when done.');
+  return res;
+}
+
+/**
+ * Sends a plain-text diagnostic email to the configured admin address
+ * to verify MailApp quota / permissions are working. Does not touch
+ * Drive or Sheets.
+ */
+function testMailSend() {
+  Logger.log('── testMailSend ────────────────────────────');
+  var props       = PropertiesService.getScriptProperties();
+  var adminEmail  = props.getProperty(PROP.ADMIN_EMAIL)  || DEFAULTS.ADMIN_EMAIL;
+  var societyName = props.getProperty(PROP.SOCIETY_NAME) || DEFAULTS.SOCIETY_NAME;
+  var remaining   = MailApp.getRemainingDailyQuota();
+  Logger.log('Sending as      : ' + Session.getEffectiveUser().getEmail());
+  Logger.log('Recipient       : ' + adminEmail);
+  Logger.log('Daily quota left: ' + remaining);
+
+  if (remaining <= 0) throw new Error('MailApp daily quota exhausted. Try again tomorrow.');
+
+  var stamp = new Date().toISOString();
+  MailApp.sendEmail({
+    to: adminEmail,
+    subject: '[' + societyName + '] Test email from Resident Registry — ' + stamp,
+    body: [
+      societyName + ' — Resident Registry',
+      '',
+      'This is a diagnostic test message sent by testMailSend().',
+      'Timestamp: ' + stamp,
+      'Running as: ' + Session.getEffectiveUser().getEmail(),
+      '',
+      'If you received this, MailApp is configured correctly.',
+    ].join('\n'),
+    name: societyName + ' Registry',
+  });
+  Logger.log('✔  Email dispatched. Check ' + adminEmail + '.');
+  return { ok: true, to: adminEmail };
+}
