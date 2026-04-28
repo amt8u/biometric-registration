@@ -409,11 +409,16 @@ function listRegistrations(pw) {
   var values = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
   var regs = values.filter(function (row) { return row[20] === 'ACTIVE'; }).map(function (row) {
     return {
-      ts: row[0] instanceof Date ? row[0].toISOString() : row[0],
-      bin: row[1], type: row[2], typeLabel: row[3], tower: row[4], flat: row[5], residing: row[6],
-      primary: { id: row[7], name: row[8], mobile: row[9], email: row[10], idType: row[11], idNo: row[12], agrNo: row[13], pvNo: row[14] },
-      memberCount: row[15], memberIds: row[16], memberNames: row[17],
-      driveFolderUrl: row[18], dateStr: row[19],
+      ts: toIso_(row[0]),
+      bin: str_(row[1]), type: str_(row[2]), typeLabel: str_(row[3]),
+      tower: str_(row[4]), flat: str_(row[5]), residing: str_(row[6]),
+      primary: {
+        id: str_(row[7]), name: str_(row[8]), mobile: str_(row[9]), email: str_(row[10]),
+        idType: str_(row[11]), idNo: str_(row[12]), agrNo: str_(row[13]), pvNo: str_(row[14]),
+      },
+      memberCount: Number(row[15]) || 0,
+      memberIds: str_(row[16]), memberNames: str_(row[17]),
+      driveFolderUrl: str_(row[18]), dateStr: str_(row[19]),
     };
   });
   return { regs: regs, deletions: readDeletions_(ss) };
@@ -421,16 +426,33 @@ function listRegistrations(pw) {
 
 function readDeletions_(ss) {
   var sh = ss.getSheetByName(SHEET_DELETIONS);
-  if (sh.getLastRow() < 2) return [];
+  if (!sh || sh.getLastRow() < 2) return [];
   var rows = sh.getRange(2, 1, sh.getLastRow() - 1, sh.getLastColumn()).getValues();
   return rows.map(function (row) {
     return {
-      deletedTs: row[0] instanceof Date ? row[0].toISOString() : row[0],
-      bin: row[1], tower: row[2], flat: row[3], type: row[4], typeLabel: row[5],
-      primaryName: row[6], primaryMobile: row[7], primaryEmail: row[8], memberCount: row[9],
-      registeredOn: row[10], reason: row[11], remarks: row[12], driveFolderUrl: row[13], deletedBy: row[14],
+      deletedTs: toIso_(row[0]),
+      bin: str_(row[1]), tower: str_(row[2]), flat: str_(row[3]),
+      type: str_(row[4]), typeLabel: str_(row[5]),
+      primaryName: str_(row[6]), primaryMobile: str_(row[7]), primaryEmail: str_(row[8]),
+      memberCount: Number(row[9]) || 0,
+      registeredOn: str_(row[10]), reason: str_(row[11]), remarks: str_(row[12]),
+      driveFolderUrl: str_(row[13]), deletedBy: str_(row[14]),
     };
   });
+}
+
+// Coerce any cell value to a plain string (handles Date, number, null, undefined).
+function str_(v) {
+  if (v === null || v === undefined) return '';
+  if (v instanceof Date) return v.toISOString();
+  return String(v);
+}
+function toIso_(v) {
+  if (v instanceof Date) return v.toISOString();
+  if (v === null || v === undefined || v === '') return '';
+  // Try to parse strings; fall back to raw string if unparseable.
+  var d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toISOString();
 }
 
 function deleteRegistration(pw, bin, reason, remarks) {

@@ -408,8 +408,13 @@ const APP = (() => {
 
   function loadAdminData() {
     google.script.run
-      .withSuccessHandler(data => { ADMIN_DATA = data; renderAdmin(); })
-      .withFailureHandler(err => showFormAlert(err.message||String(err)))
+      .withSuccessHandler(data => {
+        ADMIN_DATA = data && typeof data === 'object'
+          ? { regs: data.regs || [], deletions: data.deletions || [] }
+          : { regs: [], deletions: [] };
+        renderAdmin();
+      })
+      .withFailureHandler(err => alert(err.message||String(err)))
       .listRegistrations(ADMIN_PW);
   }
 
