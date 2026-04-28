@@ -1,0 +1,624 @@
+<script>
+// ══════════════════════════════════════════════════════════
+// Blue Ridge Resident Registry — client (Apps Script web app)
+// Data round-trips via google.script.run; no localStorage, no OAuth flow.
+// ══════════════════════════════════════════════════════════
+
+const APP = (() => {
+
+  let CFG = { societyName: 'Blue Ridge' };
+
+  // Admin password cached in memory for the current session only.
+  let ADMIN_PW = '';
+  let ADMIN_DATA = { regs: [], deletions: [] };
+  let _pendingDeleteBin = null;
+
+  let S = {
+    type: '', residing: null, tower: '', flat: '', bin: '',
+    primary: { name:'',mobile:'',email:'',idType:'',idOtherName:'',agrNo:'',pvNo:'',idNo:'', files:{} },
+    members: [],
+  };
+
+  function init() {
+    google.script.run
+      .withSuccessHandler(c => { CFG = c || CFG; })
+      .withFailureHandler(err => console.error(err))
+      .getPublicConfig();
+  }
+
+  // ── Type / BIN ─────────────────────────────────────────────
+  function setType(type) {
+    S.type = type; S.residing = null; S.bin = '';
+    const badge = document.getElementById('type-badge');
+    badge.className = type === 'OWN' ? 'own' : 'ten';
+    badge.innerHTML = type === 'OWN'
+      ? '<span class="badge-ico">🏠</span> OWNER REGISTRATION <span class="badge-bin" id="badge-bin">—</span>'
+      : '<span class="badge-ico">🔑</span> TENANT REGISTRATION <span class="badge-bin" id="badge-bin">—</span>';
+    document.getElementById('stepper').style.display = 'flex';
+    document.getElementById('residing-wrap').style.display = type === 'OWN' ? 'block' : 'none';
+    document.getElementById('doc-owner-wrap').style.display = type === 'OWN' ? 'flex' : 'none';
+    document.getElementById('doc-tenant-wrap').style.display = type === 'TEN' ? 'block' : 'none';
+    document.getElementById('name-note').textContent = type === 'OWN'
+      ? 'Enter the first name of the person listed on Index II' : '';
+    goStep(1);
+  }
+
+  function goType() {
+    hideAll(['step-1','step-2','step-3','step-4']);
+    document.getElementById('step-type').style.display = 'block';
+    document.getElementById('stepper').style.display = 'none';
+    document.getElementById('type-badge').className = '';
+    document.getElementById('type-badge').style.display = 'none';
+    S.type = ''; clearFormAlert();
+  }
+
+  function makeBIN() {
+    const t = (S.tower||'').trim().toUpperCase().replace(/\s+/g,'');
+    const f = (S.flat||'').trim().toUpperCase().replace(/\s+/g,'');
+    if (!t || !f) return '';
+    if (S.type === 'TEN') return `T${t}-F${f}-TEN`;
+    if (S.type === 'OWN' && S.residing === false) return `T${t}-F${f}-OWN-NR`;
+    if (S.type === 'OWN' && S.residing === true)  return `T${t}-F${f}-OWN`;
+    return '';
+  }
+
+  const personId = (bin, idx) => `${bin}-${String.fromCharCode(65 + idx)}`;
+
+  function updateBIN() {
+    S.tower = document.getElementById('f-tower').value;
+    S.flat  = document.getElementById('f-flat').value;
+    S.bin = makeBIN();
+    const dv = document.getElementById('bin-display');
+    const wrap = document.getElementById('bin-wrap');
+    const badgeBin = document.getElementById('badge-bin');
+    if (S.bin) { dv.textContent = S.bin; wrap.style.display = 'block'; if (badgeBin) badgeBin.textContent = S.bin; }
+    else wrap.style.display = 'none';
+  }
+
+  function setResiding(v) {
+    S.residing = v;
+    document.getElementById('yn-yes').className = 'yn' + (v === true  ? ' sel-yes' : '');
+    document.getElementById('yn-no').className  = 'yn' + (v === false ? ' sel-no'  : '');
+    updateBIN();
+  }
+
+  // ── Files ──────────────────────────────────────────────────
+  function handleFile(key, input, uzId) {
+    const file = input.files[0]; if (!file) return;
+    S.primary.files[key] = file;
+    document.getElementById('fn-'+key).textContent = '✔ ' + file.name;
+    document.getElementById(uzId).classList.add('has-file');
+  }
+
+  function handlePhoto(input) {
+    const file = input.files[0]; if (!file) return;
+    S.primary.files.photo = file;
+    document.getElementById('fn-photo').textContent = '✔ ' + file.name;
+    document.getElementById('uz-photo').classList.add('has-file');
+    const thumb = document.getElementById('photo-thumb');
+    const rd = new FileReader();
+    rd.onload = e => { thumb.src = e.target.result; thumb.style.display='block'; };
+    rd.readAsDataURL(file);
+  }
+
+  function handleIdType() {
+    const v = document.getElementById('f-idtype').value;
+    document.getElementById('idother-wrap').style.display = v === 'Other' ? 'flex' : 'none';
+    const noWrap = document.getElementById('idno-wrap');
+    const noLbl  = document.getElementById('idno-lbl');
+    const noInp  = document.getElementById('f-idno');
+    if (v) {
+      noWrap.style.display = 'block';
+      const labels = {'Aadhaar Card':'Aadhaar Number (12 digits)','PAN Card':'PAN Number','Driving Licence':'Driving Licence Number','Voter ID Card':'Voter ID / EPIC Number','Passport':'Passport Number','Other':'Document Number'};
+      const phs    = {'Aadhaar Card':'XXXX XXXX XXXX','PAN Card':'e.g. ABCDE1234F','Driving Licence':'DL number as printed on card','Voter ID Card':'As printed on Voter ID card','Passport':'e.g. A1234567','Other':'Enter document number'};
+      noLbl.innerHTML = `${labels[v]||'Document Number'} <span class="req">*</span>`;
+      noInp.placeholder = phs[v] || 'Enter document number';
+    } else { noWrap.style.display = 'none'; noInp.value = ''; }
+  }
+
+  // ── Family members ────────────────────────────────────────
+  function addMember() {
+    const idx = S.members.length;
+    S.members.push({ id: personId(S.bin, idx + 1), name: '', idNo: '', files: {} });
+    renderMembers();
+  }
+
+  function removeMember(i) {
+    S.members.splice(i, 1);
+    S.members.forEach((m, j) => m.id = personId(S.bin, j + 1));
+    renderMembers();
+  }
+
+  function renderMembers() {
+    const cont = document.getElementById('members-container');
+    cont.innerHTML = '';
+    S.members.forEach((m, i) => {
+      const div = document.createElement('div');
+      div.className = 'mem-card';
+      div.innerHTML = `
+        <div class="mem-hd">
+          <div><div class="mem-id">Member ID: ${m.id}</div></div>
+          <button class="btn mem-rm" onclick="APP.removeMember(${i})">✕ Remove</button>
+        </div>
+        <div class="g2">
+          <div class="fg full"><label class="lbl">Full Name <span class="req">*</span></label>
+            <input type="text" id="mem-name-${i}" class="inp" placeholder="Full name" value="${escapeAttr(m.name)}"
+              onchange="S_updateMemberName(${i}, this.value)"></div>
+          <div class="fg full"><label class="lbl">Identification Document Number</label>
+            <input type="text" id="mem-idno-${i}" class="inp" placeholder="Aadhaar / PAN / DL / Passport number" value="${escapeAttr(m.idNo||'')}"
+              onchange="S_updateMemberIdNo(${i}, this.value)"></div>
+          <div class="fg"><label class="lbl">Photograph</label>
+            <div class="uz ${m.files.photo?'has-file':''}" id="uz-mp-${i}">
+              <input type="file" accept="image/*" onchange="APP.memberFile(${i},'photo',this,'uz-mp-${i}','mfn-p-${i}')">
+              <div class="ui">📷</div><div class="ut"><strong>Upload photo</strong></div>
+              <div class="file-name" id="mfn-p-${i}">${m.files.photo ? '✔ '+m.files.photo.name : ''}</div>
+            </div></div>
+          <div class="fg"><label class="lbl">Identification Document</label>
+            <div class="uz ${m.files.iddoc?'has-file':''}" id="uz-mi-${i}">
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.memberFile(${i},'iddoc',this,'uz-mi-${i}','mfn-i-${i}')">
+              <div class="ui">🪪</div><div class="ut"><strong>Upload ID</strong><br>Aadhaar, PAN etc.</div>
+              <div class="file-name" id="mfn-i-${i}">${m.files.iddoc ? '✔ '+m.files.iddoc.name : ''}</div>
+            </div></div>
+        </div>`;
+      cont.appendChild(div);
+    });
+  }
+
+  window.S_updateMemberName = (i,v) => { if (S.members[i]) S.members[i].name = v; };
+  window.S_updateMemberIdNo = (i,v) => { if (S.members[i]) S.members[i].idNo  = v; };
+
+  function memberFile(i, key, input, uzId, fnId) {
+    const file = input.files[0]; if (!file) return;
+    S.members[i].files[key] = file;
+    document.getElementById(fnId).textContent = '✔ ' + file.name;
+    document.getElementById(uzId).classList.add('has-file');
+  }
+
+  // ── Steps ──────────────────────────────────────────────────
+  function hideAll(ids) { ids.forEach(id => { const el = document.getElementById(id); if (el) el.style.display='none'; }); }
+
+  function goStep(n) {
+    hideAll(['step-type','step-1','step-2','step-3','step-4']);
+    document.getElementById('step-'+n).style.display = 'block';
+    setStepper(n);
+    clearFormAlert();
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function setStepper(active) {
+    for (let i=1;i<=4;i++) {
+      const el = document.getElementById('si-'+i); if (!el) continue;
+      el.className = 'st' + (i < active ? ' done' : i === active ? ' active' : '');
+    }
+  }
+
+  function next1() {
+    S.tower = document.getElementById('f-tower').value.trim();
+    S.flat  = document.getElementById('f-flat').value.trim();
+    if (!S.tower) return showFormAlert('Please enter the Tower number.');
+    if (!S.flat)  return showFormAlert('Please enter the Flat number.');
+    if (S.type === 'OWN' && S.residing === null) return showFormAlert('Please specify whether you are currently residing in this flat.');
+    S.bin = makeBIN();
+    if (!S.bin) return showFormAlert('Could not generate BIN. Check tower and flat.');
+    updateBIN();
+    S.members.forEach((m, j) => m.id = personId(S.bin, j + 1));
+    goStep(2);
+  }
+
+  function next2() {
+    S.primary.name = document.getElementById('f-name').value.trim();
+    if (!S.primary.name) return showFormAlert('Please enter the full name.');
+    if (S.type === 'OWN' && !S.primary.files.indexii) return showFormAlert('Please upload Index II.');
+    if (S.type === 'TEN') {
+      S.primary.agrNo = document.getElementById('f-agr-no').value.trim();
+      S.primary.pvNo  = document.getElementById('f-pv-no').value.trim();
+      if (!S.primary.agrNo) return showFormAlert('Please enter the Registered Agreement Number.');
+      if (!S.primary.files.agr) return showFormAlert('Please upload the Registered Agreement.');
+      if (!S.primary.pvNo) return showFormAlert('Please enter the Police Verification Number.');
+      if (!S.primary.files.pv) return showFormAlert('Please upload the Police Verification document.');
+    }
+    S.primary.idType = document.getElementById('f-idtype').value;
+    if (!S.primary.idType) return showFormAlert('Please select a self-identification document type.');
+    if (S.primary.idType === 'Other') {
+      S.primary.idOtherName = document.getElementById('f-idother').value.trim();
+      if (!S.primary.idOtherName) return showFormAlert('Please specify the name of the identification document.');
+    }
+    S.primary.idNo = document.getElementById('f-idno').value.trim();
+    if (!S.primary.idNo) return showFormAlert('Please enter the identification document number.');
+    if (!S.primary.files.iddoc) return showFormAlert('Please upload the identification document.');
+    if (!S.primary.files.photo) return showFormAlert('Please upload a passport-size photograph.');
+    S.primary.mobile = document.getElementById('f-mobile').value.trim();
+    S.primary.email  = document.getElementById('f-email').value.trim();
+    if (!/^\d{10}$/.test(S.primary.mobile)) return showFormAlert('Please enter a valid 10-digit mobile number.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(S.primary.email)) return showFormAlert('Please enter a valid email address.');
+    goStep(3);
+  }
+
+  function next3() {
+    for (let i = 0; i < S.members.length; i++) {
+      const nameEl = document.getElementById('mem-name-'+i);
+      const idnoEl = document.getElementById('mem-idno-'+i);
+      if (nameEl) S.members[i].name = nameEl.value.trim();
+      if (idnoEl) S.members[i].idNo = idnoEl.value.trim();
+      if (!S.members[i].name) return showFormAlert('Please enter the name for family member ' + (i + 1) + '.');
+    }
+    buildReview();
+    goStep(4);
+  }
+
+  function buildReview() {
+    const typeLabel = S.type === 'OWN' ? (S.residing ? 'Owner (Residing)' : 'Owner (Not Residing)') : 'Tenant';
+    const idLabel = S.primary.idType === 'Other' ? S.primary.idOtherName : S.primary.idType;
+    const primaryId = personId(S.bin, 0);
+    let docLine = '';
+    if (S.type === 'OWN') {
+      docLine = `<div><div class="rv-l">Index II</div><div class="rv-v">${esc(S.primary.files.indexii?.name||'—')}</div></div>`;
+    } else {
+      docLine = `
+        <div><div class="rv-l">Agreement No.</div><div class="rv-v">${esc(S.primary.agrNo)}</div></div>
+        <div><div class="rv-l">Agreement File</div><div class="rv-v">${esc(S.primary.files.agr?.name||'—')}</div></div>
+        <div><div class="rv-l">Police Verif. No.</div><div class="rv-v">${esc(S.primary.pvNo)}</div></div>
+        <div><div class="rv-l">Police Verif. File</div><div class="rv-v">${esc(S.primary.files.pv?.name||'—')}</div></div>`;
+    }
+    let membersHtml = '';
+    if (S.members.length) {
+      membersHtml = `<div class="rv-sec"><div class="rv-t">Family Members (${S.members.length})</div>
+        ${S.members.map(m => `<div style="background:#f5f5f0;border-radius:7px;padding:9px 12px;margin-bottom:7px">
+          <div style="font-size:.7rem;font-weight:700;color:var(--nv2);margin-bottom:4px">ID: ${esc(m.id)}</div>
+          <div class="rv-g">
+            <div><div class="rv-l">Name</div><div class="rv-v">${esc(m.name)}</div></div>
+            <div><div class="rv-l">ID Number</div><div class="rv-v">${esc(m.idNo||'—')}</div></div>
+            <div><div class="rv-l">Photo</div><div class="rv-v">${esc(m.files.photo?.name||'Not uploaded')}</div></div>
+            <div><div class="rv-l">ID Document</div><div class="rv-v">${esc(m.files.iddoc?.name||'Not uploaded')}</div></div>
+          </div></div>`).join('')}</div>`;
+    }
+
+    document.getElementById('review-content').innerHTML = `
+      <div class="rv-sec"><div class="rv-t">Property & BIN</div>
+        <div class="rv-g">
+          <div><div class="rv-l">Registration Type</div><div class="rv-v">${esc(typeLabel)}</div></div>
+          <div><div class="rv-l">Tower</div><div class="rv-v">${esc(S.tower)}</div></div>
+          <div><div class="rv-l">Flat / Unit</div><div class="rv-v">${esc(S.flat)}</div></div>
+          <div><div class="rv-l">Generated BIN</div><div class="rv-v"><strong style="color:var(--nv);font-size:.95rem">${esc(S.bin)}</strong></div></div>
+        </div></div>
+      <div class="rv-sec"><div class="rv-t">Primary Member — ID: ${esc(primaryId)}</div>
+        <div class="rv-g">
+          <div><div class="rv-l">Full Name</div><div class="rv-v">${esc(S.primary.name)}</div></div>
+          <div><div class="rv-l">Mobile</div><div class="rv-v">${esc(S.primary.mobile)}</div></div>
+          <div><div class="rv-l">Email</div><div class="rv-v">${esc(S.primary.email)}</div></div>
+          <div><div class="rv-l">Identification</div><div class="rv-v">${esc(idLabel)}</div></div>
+          <div><div class="rv-l">Document Number</div><div class="rv-v">${esc(S.primary.idNo||'—')}</div></div>
+          ${docLine}
+          <div><div class="rv-l">ID Document</div><div class="rv-v">${esc(S.primary.files.iddoc?.name||'—')}</div></div>
+          <div><div class="rv-l">Photograph</div><div class="rv-v">${esc(S.primary.files.photo?.name||'—')}</div></div>
+        </div></div>
+      ${membersHtml}`;
+  }
+
+  // ── Submit ────────────────────────────────────────────────
+  async function submit() {
+    const btn = document.getElementById('sub-btn');
+    btn.disabled = true; btn.textContent = '⏳ Preparing upload…';
+
+    showView('view-processing');
+
+    try {
+      const payload = {
+        type: S.type, tower: S.tower.trim(), flat: S.flat.trim(),
+        residing: S.type === 'OWN' ? S.residing : null,
+        bin: S.bin,
+        primary: {
+          name: S.primary.name, mobile: S.primary.mobile, email: S.primary.email,
+          idType: S.primary.idType, idOtherName: S.primary.idOtherName, idNo: S.primary.idNo,
+          agrNo: S.primary.agrNo || '', pvNo: S.primary.pvNo || '',
+          files: await encodeFiles(S.primary.files),
+        },
+        members: await Promise.all(S.members.map(async m => ({
+          name: m.name, idNo: m.idNo || '', files: await encodeFiles(m.files || {}),
+        }))),
+      };
+
+      document.getElementById('proc-sub').textContent = 'Uploading documents to Google Drive — this may take a minute for large files.';
+
+      google.script.run
+        .withSuccessHandler(res => {
+          btn.disabled = false; btn.textContent = '✅ Confirm & Register';
+          showSuccess(res);
+        })
+        .withFailureHandler(err => {
+          btn.disabled = false; btn.textContent = '✅ Confirm & Register';
+          showView('view-form'); goStep(4);
+          showFormAlert(err.message || String(err));
+        })
+        .submitRegistration(payload);
+    } catch (e) {
+      btn.disabled = false; btn.textContent = '✅ Confirm & Register';
+      showView('view-form'); goStep(4);
+      showFormAlert(e.message || String(e));
+    }
+  }
+
+  function encodeFiles(obj) {
+    const keys = Object.keys(obj || {}).filter(k => obj[k]);
+    return Promise.all(keys.map(k => fileToPayload(obj[k]).then(p => [k, p])))
+      .then(entries => Object.fromEntries(entries));
+  }
+
+  function fileToPayload(file) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(new Error('Could not read ' + file.name));
+      r.onload = () => {
+        const dataUrl = r.result; // "data:<mime>;base64,XXXX"
+        const b64 = String(dataUrl).split(',')[1] || '';
+        resolve({ name: file.name, mimeType: file.type || 'application/octet-stream', base64: b64 });
+      };
+      r.readAsDataURL(file);
+    });
+  }
+
+  function showSuccess(res) {
+    showView('view-success');
+    document.getElementById('suc-bin').textContent = res.bin;
+    document.getElementById('suc-details').innerHTML = `
+      <div class="rv-g" style="margin-top:6px">
+        <div><div class="rv-l">Name</div><div class="rv-v">${esc(S.primary.name)}</div></div>
+        <div><div class="rv-l">Tower / Flat</div><div class="rv-v">Tower ${esc(S.tower)}, Flat ${esc(S.flat)}</div></div>
+        <div><div class="rv-l">Date</div><div class="rv-v">${esc(res.dateStr||'')}</div></div>
+        <div><div class="rv-l">Email sent to</div><div class="rv-v">${esc(S.primary.email)}</div></div>
+      </div>`;
+    const drvBtn = document.getElementById('suc-drive-btn');
+    if (res.driveFolderUrl) {
+      drvBtn.style.display = 'flex';
+      drvBtn.onclick = () => window.open(res.driveFolderUrl, '_blank');
+    } else {
+      drvBtn.style.display = 'none';
+    }
+  }
+
+  // ── Admin ─────────────────────────────────────────────────
+  function openAdminLogin() {
+    document.getElementById('adm-pw-inp').value = '';
+    document.getElementById('adm-modal-err').style.display = 'none';
+    document.getElementById('modal-admin').classList.add('open');
+    setTimeout(() => document.getElementById('adm-pw-inp').focus(), 100);
+  }
+
+  function adminLogin() {
+    const pw = document.getElementById('adm-pw-inp').value;
+    google.script.run
+      .withSuccessHandler(cfg => {
+        ADMIN_PW = pw;
+        closeModal('modal-admin');
+        showView('view-admin');
+        adminTab('records');
+        document.getElementById('s-admem').value = cfg.adminEmail || '';
+        document.getElementById('s-soc').value   = cfg.societyName || '';
+        document.getElementById('s-drid').value  = cfg.driveRootId || '';
+        document.getElementById('s-shid').value  = cfg.sheetId || '';
+        loadAdminData();
+      })
+      .withFailureHandler(err => {
+        const e = document.getElementById('adm-modal-err');
+        e.textContent = err.message || 'Login failed.';
+        e.style.display = 'flex';
+      })
+      .adminLogin(pw);
+  }
+
+  function loadAdminData() {
+    google.script.run
+      .withSuccessHandler(data => { ADMIN_DATA = data; renderAdmin(); })
+      .withFailureHandler(err => showFormAlert(err.message||String(err)))
+      .listRegistrations(ADMIN_PW);
+  }
+
+  function closeAdmin() {
+    showView('view-form');
+    document.getElementById('step-type').style.display = 'block';
+    document.getElementById('stepper').style.display = 'none';
+  }
+
+  function adminTab(tab) {
+    ['records','dellog','settings'].forEach(t => {
+      const el = document.getElementById(`adm-${t}`);
+      if (el) el.style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'dellog') renderDelLog();
+  }
+
+  function renderAdmin() {
+    const regs = ADMIN_DATA.regs || [];
+    const dels = ADMIN_DATA.deletions || [];
+    const own = regs.filter(r => r.type === 'OWN').length;
+    const ten = regs.filter(r => r.type === 'TEN').length;
+    document.getElementById('st-total').textContent = regs.length;
+    document.getElementById('st-own').textContent = own;
+    document.getElementById('st-ten').textContent = ten;
+    document.getElementById('adm-ts').textContent = regs.length
+      ? `${regs.length} active${dels.length? ' · '+dels.length+' deletion'+(dels.length>1?'s':'')+' logged':''}`
+      : `No active registrations${dels.length? ' · '+dels.length+' deletion'+(dels.length>1?'s':'')+' in log':''}`;
+
+    const wrap = document.getElementById('adm-tbl-wrap');
+    if (!regs.length) { wrap.innerHTML = '<div class="empty"><div style="font-size:2rem;margin-bottom:8px">📋</div>No registrations yet.</div>'; return; }
+    wrap.innerHTML = `<table><thead><tr>
+      <th>BIN</th><th>Name</th><th>Tower</th><th>Flat</th>
+      <th>Type</th><th>Mobile</th><th>Email</th><th>Members</th><th>Date</th><th>Action</th>
+    </tr></thead><tbody>${regs.map(r => `<tr>
+      <td><strong style="font-family:monospace;font-size:.75rem;color:var(--nv)">${esc(r.bin)}</strong></td>
+      <td>${esc(r.primary.name)}</td>
+      <td style="text-align:center">${esc(r.tower)}</td>
+      <td>${esc(r.flat)}</td>
+      <td><span class="bdg ${r.type==='OWN'?'b-own':'b-ten'}">${esc(r.type)}</span></td>
+      <td>${esc(r.primary.mobile)}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem">${esc(r.primary.email)}</td>
+      <td style="text-align:center">${(r.memberCount||0)+1}</td>
+      <td style="font-size:.72rem;white-space:nowrap">${esc(r.dateStr)}</td>
+      <td><button class="del-btn" onclick="APP.deleteReg('${escAttr(r.bin)}')">🗑 Delete</button></td>
+    </tr>`).join('')}</tbody></table>`;
+  }
+
+  function renderDelLog() {
+    const wrap = document.getElementById('del-tbl-wrap');
+    const dels = ADMIN_DATA.deletions || [];
+    if (!dels.length) { wrap.innerHTML = '<div class="empty"><div style="font-size:2rem;margin-bottom:8px">🗑</div>No deletions recorded yet.</div>'; return; }
+    const sorted = [...dels].reverse();
+    wrap.innerHTML = `<table><thead><tr>
+      <th>#</th><th>BIN</th><th>Name</th><th>Tower</th><th>Flat</th>
+      <th>Type</th><th>Registered</th><th>Deleted</th><th>Reason</th><th>Remarks</th>
+    </tr></thead><tbody>${sorted.map((d,i) => `<tr>
+      <td style="color:var(--mut);font-size:.7rem">${dels.length-i}</td>
+      <td><strong style="font-family:monospace;font-size:.73rem;color:#b91c1c">${esc(d.bin)}</strong></td>
+      <td>${esc(d.primaryName)}</td>
+      <td style="text-align:center">${esc(d.tower)}</td>
+      <td>${esc(d.flat)}</td>
+      <td><span class="bdg ${d.type==='OWN'?'b-own':'b-ten'}">${esc(d.type)}</span></td>
+      <td style="font-size:.72rem;white-space:nowrap">${esc(d.registeredOn||'')}</td>
+      <td style="font-size:.72rem;white-space:nowrap;color:#b91c1c;font-weight:600">${esc(formatTs(d.deletedTs))}</td>
+      <td style="font-size:.73rem;max-width:140px">${esc(d.reason)}</td>
+      <td style="font-size:.72rem;color:var(--mut);max-width:110px">${esc(d.remarks||'')}</td>
+    </tr>`).join('')}</tbody></table>`;
+  }
+
+  function deleteReg(bin) {
+    const reg = (ADMIN_DATA.regs||[]).find(r => r.bin === bin);
+    if (!reg) return;
+    _pendingDeleteBin = bin;
+    document.getElementById('del-info').innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:1.2rem">⚠️</span>
+        <strong style="color:#b91c1c">You are about to delete this registration</strong>
+      </div>
+      <table style="width:100%;font-size:.8rem;border-collapse:collapse">
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0;width:110px">BIN</td><td><strong style="font-family:monospace">${esc(reg.bin)}</strong></td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Name</td><td>${esc(reg.primary.name)}</td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Tower / Flat</td><td>Tower ${esc(reg.tower)}, Flat ${esc(reg.flat)}</td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Type</td><td>${esc(reg.typeLabel||reg.type)}</td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Registered</td><td>${esc(reg.dateStr||'')}</td></tr>
+      </table>`;
+    document.getElementById('del-reason').value = '';
+    document.getElementById('del-remarks').value = '';
+    document.getElementById('del-modal-err').style.display = 'none';
+    document.getElementById('modal-delete').classList.add('open');
+  }
+
+  function confirmDelete() {
+    const reason  = document.getElementById('del-reason').value;
+    const remarks = document.getElementById('del-remarks').value.trim();
+    if (!reason) {
+      const e = document.getElementById('del-modal-err');
+      e.textContent = 'Please select a reason for deletion.'; e.style.display = 'flex';
+      return;
+    }
+    google.script.run
+      .withSuccessHandler(data => {
+        ADMIN_DATA = data;
+        closeModal('modal-delete');
+        _pendingDeleteBin = null;
+        renderAdmin();
+        adminTab('dellog');
+      })
+      .withFailureHandler(err => {
+        const e = document.getElementById('del-modal-err');
+        e.textContent = err.message || 'Delete failed.'; e.style.display = 'flex';
+      })
+      .deleteRegistration(ADMIN_PW, _pendingDeleteBin, reason, remarks);
+  }
+
+  function saveSettings() {
+    const settings = {
+      societyName: document.getElementById('s-soc').value.trim(),
+      adminEmail:  document.getElementById('s-admem').value.trim(),
+      driveRootId: document.getElementById('s-drid').value.trim(),
+      sheetId:     document.getElementById('s-shid').value.trim(),
+      newPassword: document.getElementById('s-pw').value,
+    };
+    google.script.run
+      .withSuccessHandler(cfg => {
+        if (settings.newPassword) ADMIN_PW = settings.newPassword;
+        document.getElementById('s-pw').value = '';
+        CFG.societyName = cfg.societyName;
+        alert('Settings saved.');
+      })
+      .withFailureHandler(err => alert(err.message||String(err)))
+      .saveAdminSettings(ADMIN_PW, settings);
+  }
+
+  function openSheet() {
+    google.script.run
+      .withSuccessHandler(url => { if (url) window.open(url, '_blank'); })
+      .withFailureHandler(err => alert(err.message||String(err)))
+      .getSpreadsheetUrl(ADMIN_PW);
+  }
+
+  // ── UI helpers ────────────────────────────────────────────
+  function showView(id) {
+    ['view-form','view-processing','view-success','view-admin'].forEach(v => {
+      document.getElementById(v).style.display = v === id ? 'block' : 'none';
+    });
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+
+  function showFormAlert(msg) {
+    const el = document.getElementById('form-alert');
+    el.innerHTML = '⚠️ ' + msg;
+    el.style.display = 'flex';
+    window.scrollTo({top:0, behavior:'smooth'});
+  }
+  function clearFormAlert() { document.getElementById('form-alert').style.display = 'none'; }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  function resetAll() {
+    S = {
+      type:'', residing:null, tower:'', flat:'', bin:'',
+      primary:{name:'',mobile:'',email:'',idType:'',idOtherName:'',agrNo:'',pvNo:'',idNo:'',files:{}},
+      members:[],
+    };
+    ['f-tower','f-flat','f-name','f-mobile','f-email','f-agr-no','f-pv-no','f-idother','f-idno'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('f-idtype').value = '';
+    document.getElementById('idno-wrap').style.display = 'none';
+    ['uz-indexii','uz-agr','uz-pv','uz-id','uz-photo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.classList.remove('has-file');
+    });
+    ['fn-indexii','fn-agr','fn-pv','fn-iddoc','fn-photo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = '';
+    });
+    document.getElementById('photo-thumb').style.display = 'none';
+    document.getElementById('members-container').innerHTML = '';
+    document.getElementById('idother-wrap').style.display = 'none';
+    document.getElementById('yn-yes').className = 'yn';
+    document.getElementById('yn-no').className = 'yn';
+    document.getElementById('bin-wrap').style.display = 'none';
+    document.getElementById('type-badge').className = '';
+    document.getElementById('type-badge').style.display = 'none';
+    showView('view-form');
+    goType();
+  }
+
+  function esc(s) {
+    return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escAttr(s) { return esc(s).replace(/"/g,'&quot;'); }
+  function escapeAttr(s) { return escAttr(s); }
+  function formatTs(ts) {
+    if (!ts) return '';
+    try { return new Date(ts).toLocaleString('en-IN'); } catch(_) { return String(ts); }
+  }
+
+  return {
+    init, setType, goType, goStep, updateBIN, setResiding,
+    handleFile, handlePhoto, handleIdType,
+    addMember, removeMember, memberFile, renderMembers,
+    next1, next2, next3, submit,
+    openAdminLogin, adminLogin, closeAdmin, adminTab,
+    deleteReg, confirmDelete,
+    saveSettings, openSheet,
+    resetAll, closeModal,
+    get S(){ return S; },
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', () => APP.init());
+</script>

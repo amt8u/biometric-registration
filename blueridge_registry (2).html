@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Blue Ridge — Resident Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+:root{
+  --nv:#1b2d55;--nv2:#243872;--nv3:#0f1a35;
+  --gd:#c8a44a;--gd2:#fdf7e8;--gd3:#a8872e;
+  --own:#1b6e3a;--own2:#d1fae5;--own3:#0e4423;
+  --ten:#1a4fa8;--ten2:#dbeafe;--ten3:#0d2d6e;
+  --bg:#f0efe9;--surf:#fff;--bdr:#e3e2da;
+  --txt:#1a1a2e;--mut:#6b7280;--err:#dc2626;--ok:#16a34a;
+  --rad:10px;--sh:0 2px 14px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Nunito','Segoe UI',sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* TYPE BADGE */
+#type-badge{position:sticky;top:0;z-index:200;display:none;padding:9px 16px;display:none;align-items:center;justify-content:center;gap:10px;font-size:.78rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase}
+#type-badge.own{background:var(--own);color:#fff;display:flex}
+#type-badge.ten{background:var(--ten);color:#fff;display:flex}
+#type-badge .badge-ico{font-size:1rem}
+#type-badge .badge-bin{background:rgba(255,255,255,.18);padding:2px 10px;border-radius:20px;letter-spacing:2px;font-size:.72rem}
+
+/* HEADER */
+.hdr{background:var(--nv);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 10px rgba(0,0,0,.2)}
+.logo-wrap{display:flex;flex-direction:column}
+.logo{font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;color:#fff;letter-spacing:.2px}
+.logo span{color:var(--gd)}
+.logo-sub{font-size:.62rem;color:rgba(255,255,255,.38);letter-spacing:1px;text-transform:uppercase;margin-top:1px}
+.hdr-btns{display:flex;gap:8px}
+.hbtn{padding:6px 13px;border-radius:6px;font-size:.73rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.65);font-family:inherit;transition:.2s;letter-spacing:.2px}
+.hbtn:hover{border-color:var(--gd);color:var(--gd)}
+
+/* LAYOUT */
+.wrap{max-width:720px;margin:0 auto;padding:24px 16px 48px}
+@media(min-width:768px){.wrap{padding:32px 24px 64px}}
+
+/* CARDS */
+.card{background:var(--surf);border-radius:var(--rad);padding:22px;box-shadow:var(--sh);margin-bottom:12px}
+.card-hd{font-family:'Playfair Display',Georgia,serif;font-size:1.25rem;color:var(--nv);margin-bottom:3px}
+.card-sub{font-size:.8rem;color:var(--mut);margin-bottom:18px;line-height:1.5}
+
+/* TYPE SELECTION */
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+.type-card{border:2.5px solid var(--bdr);border-radius:12px;padding:22px 16px;text-align:center;cursor:pointer;transition:all .25s;background:#fafafa;user-select:none}
+.type-card:hover{border-color:#aaa;transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,.1)}
+.type-card.own-card:hover,.type-card.own-card.sel{border-color:var(--own);background:#f0fdf4}
+.type-card.ten-card:hover,.type-card.ten-card.sel{border-color:var(--ten);background:#eff6ff}
+.type-card .tc-ico{font-size:2.4rem;margin-bottom:10px}
+.type-card .tc-t{font-family:'Playfair Display',Georgia,serif;font-size:1.1rem;color:var(--nv);margin-bottom:4px}
+.type-card .tc-s{font-size:.74rem;color:var(--mut);line-height:1.4}
+@media(max-width:480px){.type-grid{grid-template-columns:1fr}.type-card{padding:18px 14px}}
+
+/* FORM GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.full{grid-column:1/-1}
+@media(max-width:520px){.g2{grid-template-columns:1fr}.full{grid-column:1}}
+.fg{display:flex;flex-direction:column;gap:4px}
+.lbl{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--nv)}
+.lbl .req{color:var(--gd)}
+.lbl .note{font-size:.65rem;color:var(--mut);text-transform:none;letter-spacing:0;font-weight:400;display:block;margin-top:1px}
+.inp{border:1.5px solid var(--bdr);border-radius:7px;padding:9px 11px;font-size:.88rem;font-family:inherit;color:var(--txt);background:#fafaf8;outline:none;transition:border-color .2s,box-shadow .2s;width:100%}
+.inp:focus{border-color:var(--nv);box-shadow:0 0 0 3px rgba(27,45,85,.07);background:#fff}
+.inp.err{border-color:var(--err)}
+select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.ferr{font-size:.7rem;color:var(--err);margin-top:2px}
+
+/* RADIO YES/NO */
+.yn-wrap{display:flex;gap:10px;margin-top:4px}
+.yn{flex:1;border:2px solid var(--bdr);border-radius:8px;padding:10px;text-align:center;cursor:pointer;transition:all .2s;font-size:.85rem;font-weight:600;color:var(--mut)}
+.yn:hover{border-color:#9ca3af}
+.yn.sel-yes{border-color:var(--own);background:var(--own2);color:var(--own3)}
+.yn.sel-no{border-color:#dc2626;background:#fef2f2;color:#b91c1c}
+
+/* BIN PREVIEW */
+.bin-box{background:linear-gradient(135deg,var(--nv),var(--nv2));border-radius:9px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-top:6px}
+.bin-lbl{font-size:.6rem;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px}
+.bin-val{font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:var(--gd);letter-spacing:3px}
+.bin-note{font-size:.62rem;color:rgba(255,255,255,.22);text-align:right}
+
+/* UPLOAD */
+.uz{border:2px dashed var(--bdr);border-radius:8px;padding:14px;text-align:center;background:#fafaf8;transition:all .2s;position:relative;cursor:pointer;min-height:72px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.uz:hover{border-color:var(--nv);background:#f0f2f8}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.uz .ui{font-size:1.4rem;margin-bottom:3px}
+.uz .ut{font-size:.75rem;color:var(--mut);line-height:1.4}
+.uz .ut strong{color:var(--nv)}
+.uz.has-file{border-color:var(--ok);background:#f0fdf4}
+.file-name{font-size:.72rem;color:var(--ok);font-weight:600;margin-top:3px;word-break:break-all}
+
+/* PHOTO */
+.photo-wrap{display:flex;gap:12px;align-items:flex-start}
+.photo-thumb{width:72px;height:72px;border-radius:8px;object-fit:cover;border:2px solid var(--bdr);display:none;flex-shrink:0;background:#f0f0f0}
+
+/* NOTE BOX */
+.nb{background:var(--gd2);border:1px solid #e8d5a0;border-radius:7px;padding:8px 12px;font-size:.76rem;color:#6b4f0a;line-height:1.5;margin-top:4px}
+.nb .ast{color:var(--err);font-weight:700}
+
+/* MEMBER CARDS */
+.mem-card{background:#fafaf8;border:1.5px solid var(--bdr);border-radius:9px;padding:16px;margin-bottom:10px;position:relative}
+.mem-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.mem-id{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--nv2);background:var(--gd2);padding:3px 10px;border-radius:20px;border:1px solid #e8d5a0}
+.mem-rm{background:none;border:none;cursor:pointer;color:var(--err);font-size:.75rem;font-weight:600;padding:4px 8px;border-radius:5px;transition:.2s}
+.mem-rm:hover{background:#fee2e2}
+.add-mem-btn{width:100%;border:2px dashed var(--bdr);background:transparent;border-radius:9px;padding:13px;font-size:.85rem;font-weight:600;color:var(--nv2);cursor:pointer;font-family:inherit;transition:all .2s;margin-bottom:8px}
+.add-mem-btn:hover{border-color:var(--nv);background:#f0f4ff}
+
+/* REVIEW */
+.rv-sec{margin-bottom:16px}
+.rv-t{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;color:var(--gd3);border-bottom:1px solid var(--gd2);padding-bottom:4px;margin-bottom:8px}
+.rv-g{display:grid;grid-template-columns:1fr 1fr;gap:7px 16px}
+.rv-l{font-size:.65rem;text-transform:uppercase;color:var(--mut);letter-spacing:.4px;margin-bottom:1px}
+.rv-v{font-size:.84rem;font-weight:500;word-break:break-all}
+@media(max-width:480px){.rv-g{grid-template-columns:1fr}}
+
+/* ALERTS */
+.al{padding:9px 13px;border-radius:7px;font-size:.8rem;margin-bottom:10px;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
+.al-err{background:#fef2f2;color:#b91c1c;border:1px solid #fecaca}
+.al-ok{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+.al-info{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+.al-warn{background:#fffbeb;color:#92400e;border:1px solid #fde68a}
+
+/* BUTTONS */
+.nr{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.btn{padding:10px 20px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;letter-spacing:.1px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.bp{background:var(--nv);color:#fff;flex:1}
+.bp:hover:not(:disabled){background:var(--nv2)}
+.bo{background:transparent;border:1.5px solid var(--bdr);color:var(--nv);flex-shrink:0}
+.bo:hover{border-color:var(--nv)}
+.bg{background:var(--gd);color:#fff}
+.bg:hover:not(:disabled){background:var(--gd3)}
+.bk{background:#16a34a;color:#fff;flex:1}
+.bk:hover:not(:disabled){background:#15803d}
+.br{background:#dc2626;color:#fff}
+
+/* STEPPER */
+.stepper{display:flex;align-items:flex-start;margin-bottom:24px;overflow-x:auto;padding-bottom:4px}
+.stepper::-webkit-scrollbar{height:3px}
+.stepper::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px}
+.st{flex:1;min-width:70px;display:flex;flex-direction:column;align-items:center;position:relative}
+.st:not(:last-child)::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--bdr);z-index:0;transition:background .3s}
+.st.done:not(:last-child)::after{background:var(--gd)}
+.st-c{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;background:var(--bdr);color:var(--mut);position:relative;z-index:1;transition:all .25s}
+.st.active .st-c{background:var(--nv);color:#fff;box-shadow:0 0 0 3px rgba(27,45,85,.2)}
+.st.done .st-c{background:var(--gd);color:#fff}
+.st-lbl{margin-top:4px;font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--mut);text-align:center;line-height:1.3}
+.st.active .st-lbl{color:var(--nv)}
+.st.done .st-lbl{color:var(--gd3)}
+
+/* PROCESSING */
+.proc{text-align:center;padding:40px 20px}
+.proc-ring{width:60px;height:60px;border:4px solid var(--bdr);border-top-color:var(--nv);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.proc-t{font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;color:var(--nv);margin-bottom:5px}
+.proc-s{font-size:.82rem;color:var(--mut)}
+.proc-log{margin-top:20px;text-align:left;background:#f5f5f0;border-radius:8px;padding:14px;max-height:180px;overflow-y:auto}
+.proc-log-item{font-size:.73rem;color:var(--mut);padding:3px 0;border-bottom:1px solid #eee;display:flex;align-items:center;gap:7px}
+.proc-log-item.done{color:var(--ok)}
+.proc-log-item.err{color:var(--err)}
+.proc-log-item .pi{font-size:.85rem}
+
+/* SUCCESS */
+.suc{text-align:center}
+.suc-icon{width:68px;height:68px;background:#dcfce7;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px}
+.suc-t{font-family:'Playfair Display',Georgia,serif;font-size:1.6rem;color:var(--nv);margin-bottom:6px}
+.suc-s{font-size:.84rem;color:var(--mut);margin-bottom:22px}
+.suc-bin{background:linear-gradient(135deg,var(--nv),var(--nv2));border-radius:12px;padding:20px;margin-bottom:18px}
+.suc-bin .sl{font-size:.6rem;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
+.suc-bin .sv{font-family:'Playfair Display',Georgia,serif;font-size:2rem;color:var(--gd);letter-spacing:4px}
+.suc-bin .ss{font-size:.68rem;color:rgba(255,255,255,.25);margin-top:6px}
+.suc-acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:6px}
+
+/* ADMIN */
+.adm-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.as{background:var(--surf);border-radius:9px;padding:14px 10px;border:1px solid var(--bdr);text-align:center}
+.as-n{font-family:'Playfair Display',Georgia,serif;font-size:1.7rem;color:var(--nv)}
+.as-l{font-size:.63rem;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);margin-top:1px}
+@media(max-width:480px){.adm-stats{grid-template-columns:1fr 1fr}}
+.tblw{overflow-x:auto;border-radius:9px;border:1px solid var(--bdr)}
+table{width:100%;border-collapse:collapse;font-size:.75rem;min-width:600px}
+th{background:var(--nv);color:#fff;padding:8px 11px;text-align:left;font-weight:600;font-size:.68rem;letter-spacing:.3px;white-space:nowrap}
+td{padding:7px 11px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+.bdg{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.65rem;font-weight:700;text-transform:uppercase}
+.b-own{background:var(--own2);color:var(--own3)}
+.b-ten{background:var(--ten2);color:var(--ten3)}
+.empty{text-align:center;padding:40px;color:var(--mut)}
+
+/* MODAL */
+.mover{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:999;padding:16px}
+.mover.open{display:flex}
+.modal{background:#fff;border-radius:12px;padding:26px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);max-height:90vh;overflow-y:auto}
+.modal-t{font-family:'Playfair Display',Georgia,serif;font-size:1.2rem;color:var(--nv);margin-bottom:14px}
+
+/* SETUP BANNER */
+#setup-banner{background:linear-gradient(90deg,#7c2d12,#991b1b);color:#fff;padding:10px 18px;font-size:.78rem;display:none;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;text-align:center}
+#setup-banner a{color:#fde68a;font-weight:600;cursor:pointer;text-decoration:underline}
+
+/* QR */
+.qr-box{background:var(--nv);border-radius:10px;padding:20px;text-align:center}
+.qr-box img{border-radius:6px;background:#fff;padding:6px;margin-bottom:10px}
+.qr-url{background:rgba(255,255,255,.07);border-radius:5px;padding:6px 10px;font-size:.68rem;color:rgba(255,255,255,.45);word-break:break-all;margin-bottom:8px;border:1px solid rgba(255,255,255,.1)}
+
+/* SETTINGS */
+.sett-g{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+@media(max-width:520px){.sett-g{grid-template-columns:1fr}}
+
+/* TAB TOGGLE */
+.adm-tabs{display:flex;gap:8px;margin-bottom:16px;border-bottom:2px solid var(--bdr);padding-bottom:10px;flex-wrap:wrap}
+.atab{padding:7px 14px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;border:1.5px solid var(--bdr);background:transparent;color:var(--mut);font-family:inherit;transition:.2s}
+.atab.active{background:var(--nv);color:#fff;border-color:var(--nv)}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:#ccc;border-radius:3px}
+
+/* DELETE BTN IN TABLE */
+.del-btn{padding:3px 9px;border-radius:5px;font-size:.68rem;font-weight:700;cursor:pointer;border:1.5px solid #fecaca;background:#fff;color:#b91c1c;font-family:inherit;transition:.2s;white-space:nowrap}
+.del-btn:hover{background:#fef2f2;border-color:#b91c1c}
+
+/* DELETION LOG */
+.del-badge{display:inline-flex;align-items:center;gap:5px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:2px 9px;border-radius:20px;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.del-row td{color:#9ca3af!important;text-decoration:line-through}
+.del-row td strong{color:#9ca3af!important}
+.del-meta{font-size:.7rem;color:#6b7280;line-height:1.5}
+
+/* ANIMATIONS */
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card,.mem-card{animation:fadeIn .25s ease both}
+</style>
+</head>
+<body>
+
+<!-- SETUP BANNER -->
+<div id="setup-banner">
+  ⚠️ Google Client ID not configured — Drive & email features disabled.
+  <a onclick="APP.openSetup()">Configure now →</a>
+</div>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="logo-wrap">
+    <div class="logo">Blue<span>Ridge</span></div>
+    <div class="logo-sub">Resident Registry</div>
+  </div>
+  <div class="hdr-btns">
+    <button class="hbtn" onclick="APP.resetAll()">＋ New</button>
+    <button class="hbtn" onclick="APP.openAdminLogin()">🔐 Admin</button>
+  </div>
+</header>
+
+<!-- TYPE BADGE -->
+<div id="type-badge"></div>
+
+<!-- ════════════════ FORM VIEW ════════════════ -->
+<div id="view-form" class="wrap">
+
+  <!-- STEPPER (hidden on type step) -->
+  <div class="stepper" id="stepper" style="display:none">
+    <div class="st active" id="si-1"><div class="st-c">1</div><div class="st-lbl">Property</div></div>
+    <div class="st" id="si-2"><div class="st-c">2</div><div class="st-lbl">Primary</div></div>
+    <div class="st" id="si-3"><div class="st-c">3</div><div class="st-lbl">Family</div></div>
+    <div class="st" id="si-4"><div class="st-c">4</div><div class="st-lbl">Review</div></div>
+  </div>
+
+  <div id="form-alert" class="al al-err" style="display:none"></div>
+
+  <!-- ── TYPE SELECTION ── -->
+  <div id="step-type">
+    <div class="card">
+      <div class="card-hd">Welcome to Blue Ridge Registry</div>
+      <div class="card-sub">Please select your registration type to begin. All residents — owners and tenants — must complete this one-time registration.</div>
+      <div class="type-grid">
+        <div class="type-card own-card" onclick="APP.setType('OWN')">
+          <div class="tc-ico">🏠</div>
+          <div class="tc-t">Owner</div>
+          <div class="tc-s">I own this flat (or am co-owner). I hold Index II / Sale Deed for this property.</div>
+        </div>
+        <div class="type-card ten-card" onclick="APP.setType('TEN')">
+          <div class="tc-ico">🔑</div>
+          <div class="tc-t">Tenant</div>
+          <div class="tc-s">I am renting / leasing this flat. I have a Registered Agreement and Police Verification.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 1: PROPERTY ── -->
+  <div id="step-1" style="display:none">
+    <div class="card">
+      <div class="card-hd">Property Details</div>
+      <div class="card-sub">Tower and flat number are used to generate your unique BIN.</div>
+      <div class="g2">
+        <div class="fg">
+          <label class="lbl">Tower Number <span class="req">*</span></label>
+          <input type="text" id="f-tower" class="inp" placeholder="e.g. A, B, 1, 2" oninput="APP.updateBIN()">
+        </div>
+        <div class="fg">
+          <label class="lbl">Flat / Unit Number <span class="req">*</span></label>
+          <input type="text" id="f-flat" class="inp" placeholder="e.g. 304, G-01" oninput="APP.updateBIN()">
+        </div>
+
+        <!-- Owner-only: residing -->
+        <div class="fg full" id="residing-wrap" style="display:none">
+          <label class="lbl">Are you currently residing in this flat? <span class="req">*</span></label>
+          <div class="yn-wrap">
+            <div class="yn" id="yn-yes" onclick="APP.setResiding(true)">✅ Yes, I am residing</div>
+            <div class="yn" id="yn-no" onclick="APP.setResiding(false)">🚪 No, currently not residing</div>
+          </div>
+        </div>
+
+        <div class="fg full" id="bin-wrap" style="display:none">
+          <label class="lbl">Your BIN Number</label>
+          <div class="bin-box">
+            <div><div class="bin-lbl">Biometric Identity Number</div><div class="bin-val" id="bin-display">—</div></div>
+            <div class="bin-note">Tower · Flat · Type</div>
+          </div>
+        </div>
+      </div>
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goType()">← Change Type</button>
+        <button class="btn bp" onclick="APP.next1()">Next: Primary Member →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 2: PRIMARY MEMBER ── -->
+  <div id="step-2" style="display:none">
+    <div class="card">
+      <div id="s2-hd" class="card-hd">Primary Member Details</div>
+      <div class="card-sub" id="s2-sub">Enter details for the primary registered member of this flat.</div>
+
+      <div class="g2">
+        <!-- Name -->
+        <div class="fg full">
+          <label class="lbl">Full Name <span class="req">*</span>
+            <span class="note" id="name-note"></span>
+          </label>
+          <input type="text" id="f-name" class="inp" placeholder="Full name as per official document">
+        </div>
+
+        <!-- OWNER: Index II | TENANT: Agreement + Police Verif -->
+        <div id="doc-owner-wrap" class="fg full" style="display:none">
+          <label class="lbl">Upload Index II <span class="req">*</span>
+            <span class="note">Property ownership document (Index II / Sale Deed)</span>
+          </label>
+          <div class="uz" id="uz-indexii">
+            <input type="file" id="f-indexii" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('indexii',this,'uz-indexii')">
+            <div class="ui">📄</div><div class="ut"><strong>Click to upload Index II</strong><br>PDF or image file</div>
+            <div class="file-name" id="fn-indexii"></div>
+          </div>
+        </div>
+
+        <div id="doc-tenant-wrap" class="full" style="display:none">
+          <div class="g2">
+            <div class="fg full">
+              <label class="lbl">Registered Agreement Number <span class="req">*</span></label>
+              <input type="text" id="f-agr-no" class="inp" placeholder="Registration / agreement number">
+            </div>
+            <div class="fg full">
+              <label class="lbl">Upload Registered Agreement <span class="req">*</span></label>
+              <div class="uz" id="uz-agr">
+                <input type="file" id="f-agr" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('agr',this,'uz-agr')">
+                <div class="ui">📋</div><div class="ut"><strong>Click to upload Agreement</strong><br>PDF or image</div>
+                <div class="file-name" id="fn-agr"></div>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="lbl">Police Verification Number <span class="req">*</span></label>
+              <input type="text" id="f-pv-no" class="inp" placeholder="Police verification ref. no.">
+            </div>
+            <div class="fg">
+              <label class="lbl">Upload Police Verification <span class="req">*</span></label>
+              <div class="uz" id="uz-pv">
+                <input type="file" id="f-pv" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('pv',this,'uz-pv')">
+                <div class="ui">🚔</div><div class="ut"><strong>Click to upload</strong><br>PDF or image</div>
+                <div class="file-name" id="fn-pv"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ID Type -->
+        <div class="fg full">
+          <label class="lbl">Self Identification Document <span class="req">*</span></label>
+          <select id="f-idtype" class="inp" onchange="APP.handleIdType()">
+            <option value="">Select document type…</option>
+            <option value="Aadhaar Card">Aadhaar Card</option>
+            <option value="PAN Card">PAN Card</option>
+            <option value="Driving Licence">Driving Licence</option>
+            <option value="Voter ID Card">Voter ID Card</option>
+            <option value="Passport">Passport</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="fg full" id="idother-wrap" style="display:none">
+          <label class="lbl">Specify Document Name <span class="req">*</span></label>
+          <input type="text" id="f-idother" class="inp" placeholder="Name of identification document">
+          <div class="nb">
+            <span class="ast">*</span> Documents other than the listed types will be accepted subject to verification and confirmation from the Society Manager.
+          </div>
+        </div>
+
+        <div class="fg full" id="idno-wrap" style="display:none">
+          <label class="lbl" id="idno-lbl">Document Number <span class="req">*</span></label>
+          <input type="text" id="f-idno" class="inp" placeholder="Enter your document number" autocomplete="off">
+        </div>
+
+        <div class="fg full">
+          <label class="lbl">Upload Identification Document <span class="req">*</span></label>
+          <div class="uz" id="uz-id">
+            <input type="file" id="f-iddoc" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('iddoc',this,'uz-id')">
+            <div class="ui">🪪</div><div class="ut"><strong>Click to upload ID document</strong><br>PDF or image (both sides if applicable)</div>
+            <div class="file-name" id="fn-iddoc"></div>
+          </div>
+        </div>
+
+        <!-- Photo -->
+        <div class="fg full">
+          <label class="lbl">Passport-size Photograph <span class="req">*</span></label>
+          <div class="photo-wrap">
+            <div class="uz" style="flex:1" id="uz-photo">
+              <input type="file" id="f-photo" accept="image/*" onchange="APP.handlePhoto(this)">
+              <div class="ui">📷</div><div class="ut"><strong>Click to upload photograph</strong><br>Clear face photo, JPG or PNG</div>
+              <div class="file-name" id="fn-photo"></div>
+            </div>
+            <img id="photo-thumb" class="photo-thumb" alt="Photo preview">
+          </div>
+        </div>
+
+        <div class="fg">
+          <label class="lbl">Mobile Number <span class="req">*</span></label>
+          <input type="tel" id="f-mobile" class="inp" placeholder="10-digit mobile number" maxlength="10">
+        </div>
+        <div class="fg">
+          <label class="lbl">Email ID <span class="req">*</span>
+            <span class="note">Registration confirmation will be emailed here</span>
+          </label>
+          <input type="email" id="f-email" class="inp" placeholder="your@email.com">
+        </div>
+      </div>
+
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goStep(1)">← Back</button>
+        <button class="btn bp" onclick="APP.next2()">Next: Family Members →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 3: FAMILY MEMBERS ── -->
+  <div id="step-3" style="display:none">
+    <div class="card">
+      <div class="card-hd">Family Members</div>
+      <div class="card-sub">Add all family members residing in this flat.</div>
+      <div class="al al-info">👨‍👩‍👧‍👦 Please add <strong>every family member 8 years of age and above</strong> who resides in this flat. Each member will receive a unique identification number.</div>
+    </div>
+
+    <div id="members-container"></div>
+
+    <button class="btn add-mem-btn" onclick="APP.addMember()">＋ Add Family Member</button>
+
+    <div class="card" style="background:#f9f8f4">
+      <div style="font-size:.78rem;color:var(--mut)">
+        If no family members to add, click Next to proceed to the review step.
+      </div>
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goStep(2)">← Back</button>
+        <button class="btn bp" onclick="APP.next3()">Next: Review →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── STEP 4: REVIEW ── -->
+  <div id="step-4" style="display:none">
+    <div class="card">
+      <div class="card-hd">Review & Submit</div>
+      <div class="card-sub">Please verify all details before final submission. Once submitted, your BIN is permanently recorded.</div>
+      <div id="review-content"></div>
+
+      <div class="al al-warn" style="margin-top:14px">
+        📧 On submission, all documents will be uploaded to Google Drive and a registration PDF will be emailed to you and the society manager. You may be prompted to authorize Google access.
+      </div>
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goStep(3)">← Edit</button>
+        <button class="btn bg" id="sub-btn" onclick="APP.submit()">✅ Confirm & Register</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ PROCESSING VIEW ════════════════ -->
+<div id="view-processing" style="display:none" class="wrap">
+  <div class="card">
+    <div class="proc">
+      <div class="proc-ring"></div>
+      <div class="proc-t" id="proc-title">Processing Registration…</div>
+      <div class="proc-s" id="proc-sub">Please wait and keep this window open</div>
+    </div>
+    <div class="proc-log" id="proc-log"></div>
+  </div>
+</div>
+
+<!-- ════════════════ SUCCESS VIEW ════════════════ -->
+<div id="view-success" style="display:none" class="wrap">
+  <div class="card">
+    <div class="suc">
+      <div class="suc-icon">✅</div>
+      <div class="suc-t">Registration Complete!</div>
+      <div class="suc-s">Welcome to the Blue Ridge community. Your registration is confirmed.</div>
+      <div class="suc-bin">
+        <div class="sl">Your Biometric Identity Number (BIN)</div>
+        <div class="sv" id="suc-bin">—</div>
+        <div class="ss">Save this number — it uniquely identifies your flat in all society records</div>
+      </div>
+      <div id="suc-details" style="text-align:left;margin-bottom:18px"></div>
+      <div class="suc-acts">
+        <button class="btn bk" id="suc-dl-btn">⬇ Download Registration PDF</button>
+        <button class="btn bo" id="suc-drive-btn" style="display:none">📁 Open Drive Folder</button>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn bo" style="width:100%" onclick="APP.resetAll()">＋ Register Another Resident</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════ ADMIN VIEW ════════════════ -->
+<div id="view-admin" style="display:none" class="wrap">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:var(--nv)">Admin Dashboard</div>
+      <div style="font-size:.78rem;color:var(--mut)" id="adm-ts">Loading…</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('records')">📋 Records</button>
+      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('dellog')">🗑 Deletion Log</button>
+      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('settings')">⚙ Settings</button>
+      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('qr')">📱 QR Code</button>
+      <button class="btn bg" style="font-size:.75rem;padding:7px 12px" onclick="APP.exportExcel()">↓ Excel</button>
+      <button class="btn br" style="font-size:.75rem;padding:7px 12px" onclick="APP.closeAdmin()">✕</button>
+    </div>
+  </div>
+
+  <div class="adm-stats">
+    <div class="as"><div class="as-n" id="st-total">0</div><div class="as-l">Total</div></div>
+    <div class="as"><div class="as-n" id="st-own">0</div><div class="as-l">Owners</div></div>
+    <div class="as"><div class="as-n" id="st-ten">0</div><div class="as-l">Tenants</div></div>
+  </div>
+
+  <!-- RECORDS TAB -->
+  <div id="adm-records">
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tblw" id="adm-tbl-wrap"></div>
+    </div>
+  </div>
+
+  <!-- DELETION LOG TAB -->
+  <div id="adm-dellog" style="display:none">
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.05rem;color:var(--nv)">Deletion Log</div>
+          <div style="font-size:.75rem;color:var(--mut);margin-top:2px">Immutable audit trail — deleted records are never erased from this log</div>
+        </div>
+        <button class="btn bg" style="font-size:.75rem;padding:7px 14px" onclick="APP.exportDelLogExcel()">↓ Export Log</button>
+      </div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="tblw" id="del-tbl-wrap"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div id="adm-settings" style="display:none">
+    <div class="card">
+      <div class="card-hd" style="font-size:1.1rem;margin-bottom:3px">Settings</div>
+      <div class="card-sub">Configure Google API credentials, society info, and email addresses.</div>
+      <div class="sett-g">
+        <div class="fg full">
+          <label class="lbl">Google OAuth Client ID <span class="req">*</span>
+            <span class="note">From Google Cloud Console → APIs & Services → Credentials</span>
+          </label>
+          <input type="text" id="s-gcid" class="inp" placeholder="xxxx.apps.googleusercontent.com">
+        </div>
+        <div class="fg full">
+          <label class="lbl">Society Manager Email (Receives all submissions)</label>
+          <input type="email" id="s-admem" class="inp">
+        </div>
+        <div class="fg">
+          <label class="lbl">Society Name</label>
+          <input type="text" id="s-soc" class="inp">
+        </div>
+        <div class="fg">
+          <label class="lbl">Admin Password</label>
+          <input type="password" id="s-pw" class="inp" placeholder="Leave blank to keep current">
+        </div>
+        <div class="fg full">
+          <label class="lbl">Google Drive Root Folder Name</label>
+          <input type="text" id="s-drn" class="inp" placeholder="Society Registry">
+        </div>
+      </div>
+      <div class="al al-info">
+        <div>
+          <strong>Google Cloud Setup Steps:</strong><br>
+          1. Go to <strong>console.cloud.google.com</strong> → Create / select project<br>
+          2. Enable <strong>Google Drive API</strong> and <strong>Gmail API</strong><br>
+          3. Create <strong>OAuth 2.0 Client ID</strong> (Web application type)<br>
+          4. Add your hosted URL as <strong>Authorized JavaScript origin</strong><br>
+          5. Paste the Client ID above and save
+        </div>
+      </div>
+      <div class="nr" style="margin-top:14px">
+        <button class="btn bp" onclick="APP.saveSettings()">💾 Save Settings</button>
+        <button class="btn br" onclick="APP.clearAllData()">⚠ Clear All Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR TAB -->
+  <div id="adm-qr" style="display:none">
+    <div class="card">
+      <div class="card-hd" style="font-size:1.1rem;margin-bottom:3px">Share Registration Form</div>
+      <div class="card-sub">Residents can scan this QR code to open the form on their mobile device. Share the URL for desktop access.</div>
+      <div class="qr-box" id="qr-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="mover" id="modal-admin">
+  <div class="modal">
+    <div class="modal-t">🔐 Admin Access</div>
+    <div class="fg" style="margin-bottom:12px">
+      <label class="lbl">Password</label>
+      <input type="password" id="adm-pw-inp" class="inp" placeholder="Enter admin password"
+             onkeydown="if(event.key==='Enter')APP.adminLogin()">
+    </div>
+    <div id="adm-modal-err" class="al al-err" style="display:none"></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn bo" onclick="APP.closeModal('modal-admin')">Cancel</button>
+      <button class="btn bp" style="flex:1" onclick="APP.adminLogin()">Login →</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="mover" id="modal-delete">
+  <div class="modal">
+    <div class="modal-t" style="color:#b91c1c">🗑 Delete Registration</div>
+    <div id="del-info" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:14px;font-size:.83rem;line-height:1.6"></div>
+    <div class="fg" style="margin-bottom:14px">
+      <label class="lbl">Reason for deletion <span class="req">*</span></label>
+      <select id="del-reason" class="inp">
+        <option value="">Select reason…</option>
+        <option>Resident has vacated the flat</option>
+        <option>Duplicate entry</option>
+        <option>Data entered incorrectly</option>
+        <option>Tenant lease expired</option>
+        <option>Owner sold the flat</option>
+        <option>Other (see remarks)</option>
+      </select>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label class="lbl">Remarks (optional)</label>
+      <input type="text" id="del-remarks" class="inp" placeholder="Additional notes…">
+    </div>
+    <div class="al al-warn" style="margin-bottom:14px;font-size:.78rem">
+      ⚠ This action removes the record from the active registry. The deletion is permanently logged with your reason and timestamp and cannot be undone.
+    </div>
+    <div id="del-modal-err" class="al al-err" style="display:none"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn bo" onclick="APP.closeModal('modal-delete')">Cancel</button>
+      <button class="btn br" style="flex:1" onclick="APP.confirmDelete()">🗑 Confirm Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// APP — Blue Ridge Resident Registry
+// ══════════════════════════════════════════════════════════
+
+const APP = (() => {
+  // ── CONFIG ──
+  let CFG = {
+    googleClientId: '',
+    adminEmail: 'anupam.tripathi@blueridge.co.in',
+    societyName: 'Blue Ridge',
+    adminPw: 'blueridge@123',
+    driveRootName: 'Society Registry',
+    driveRootId: '',
+  };
+
+  // ── FORM STATE ──
+  let S = {
+    type: '',         // 'OWN' | 'TEN'
+    residing: null,   // true | false (owner only)
+    tower: '', flat: '', bin: '',
+    primary: {
+      name: '', mobile: '', email: '',
+      idType: '', idOtherName: '',
+      agrNo: '', pvNo: '',
+      files: {}       // { indexii, agr, pv, iddoc, photo } — File objects
+    },
+    members: [],      // [{id, name, files:{photo,iddoc}}]
+  };
+
+  // ── REGISTRATIONS ──
+  let REGS = [];
+  let DELETED = [];      // deletion log — never purged
+  let _pendingDeleteBin = null;   // BIN awaiting confirmation
+
+  // ── GOOGLE STATE ──
+  let gToken = null;
+  let tokenClient = null;
+  let pendingResolve = null;
+
+  // ── CURRENT PDF DATA URL (for download) ──
+  let lastPdfDataUrl = null;
+  let lastDriveFolderUrl = null;
+
+  // ────────────────────────────────────────
+  // INIT
+  // ────────────────────────────────────────
+  function init() {
+    loadCfg();
+    loadRegs();
+    loadDeleted();
+    checkSetupBanner();
+    loadGoogleIdentity();
+  }
+
+  function loadCfg() {
+    const raw = localStorage.getItem('br_cfg');
+    if (raw) { try { CFG = { ...CFG, ...JSON.parse(raw) }; } catch {} }
+  }
+
+  function saveCfg() {
+    localStorage.setItem('br_cfg', JSON.stringify(CFG));
+  }
+
+  function loadRegs() {
+    const raw = localStorage.getItem('br_regs');
+    try { REGS = raw ? JSON.parse(raw) : []; } catch { REGS = []; }
+  }
+
+  function saveRegs() {
+    localStorage.setItem('br_regs', JSON.stringify(REGS));
+  }
+
+  function loadDeleted() {
+    const raw = localStorage.getItem('br_deleted');
+    try { DELETED = raw ? JSON.parse(raw) : []; } catch { DELETED = []; }
+  }
+
+  function saveDeleted() {
+    localStorage.setItem('br_deleted', JSON.stringify(DELETED));
+  }
+
+  function checkSetupBanner() {
+    const b = document.getElementById('setup-banner');
+    b.style.display = CFG.googleClientId ? 'none' : 'flex';
+  }
+
+  function loadGoogleIdentity() {
+    if (!CFG.googleClientId) return;
+    const check = () => {
+      if (window.google?.accounts?.oauth2) {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: CFG.googleClientId,
+          scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/gmail.send',
+          callback: resp => {
+            if (resp.error) {
+              if (pendingResolve) { pendingResolve({ error: resp.error }); pendingResolve = null; }
+              return;
+            }
+            gToken = resp.access_token;
+            if (pendingResolve) { pendingResolve({ ok: true }); pendingResolve = null; }
+          },
+        });
+      } else {
+        setTimeout(check, 500);
+      }
+    };
+    check();
+  }
+
+  function authorizeGoogle() {
+    return new Promise((resolve) => {
+      if (gToken) { resolve({ ok: true }); return; }
+      if (!tokenClient) {
+        resolve({ error: 'Google client not initialized. Please configure Client ID in Admin → Settings.' });
+        return;
+      }
+      pendingResolve = resolve;
+      tokenClient.requestAccessToken({ prompt: '' });
+    });
+  }
+
+  // ────────────────────────────────────────
+  // TYPE SELECTION
+  // ────────────────────────────────────────
+  function setType(type) {
+    S.type = type;
+    S.residing = null;
+    S.bin = '';
+
+    // Show badge
+    const badge = document.getElementById('type-badge');
+    badge.className = type === 'OWN' ? 'own' : 'ten';
+    badge.innerHTML = type === 'OWN'
+      ? '<span class="badge-ico">🏠</span> OWNER REGISTRATION <span class="badge-bin" id="badge-bin">—</span>'
+      : '<span class="badge-ico">🔑</span> TENANT REGISTRATION <span class="badge-bin" id="badge-bin">—</span>';
+
+    // Show stepper
+    document.getElementById('stepper').style.display = 'flex';
+
+    // Configure step 1
+    document.getElementById('residing-wrap').style.display = type === 'OWN' ? 'block' : 'none';
+
+    // Configure step 2
+    document.getElementById('doc-owner-wrap').style.display = type === 'OWN' ? 'flex' : 'none';
+    document.getElementById('doc-tenant-wrap').style.display = type === 'TEN' ? 'block' : 'none';
+    document.getElementById('name-note').textContent = type === 'OWN'
+      ? 'Enter the first name of the person listed on Index II'
+      : '';
+
+    goStep(1);
+  }
+
+  function goType() {
+    hideAll(['step-1','step-2','step-3','step-4']);
+    document.getElementById('step-type').style.display = 'block';
+    document.getElementById('stepper').style.display = 'none';
+    document.getElementById('type-badge').className = '';
+    document.getElementById('type-badge').style.display = 'none';
+    S.type = '';
+    clearFormAlert();
+  }
+
+  // ────────────────────────────────────────
+  // BIN
+  // ────────────────────────────────────────
+  function makeBIN() {
+    const t = (S.tower || '').trim().toUpperCase().replace(/\s+/g, '');
+    const f = (S.flat || '').trim().toUpperCase().replace(/\s+/g, '');
+    if (!t || !f) return '';
+    if (S.type === 'TEN') return `T${t}-F${f}-TEN`;
+    if (S.type === 'OWN' && S.residing === false) return `T${t}-F${f}-OWN-NR`;
+    if (S.type === 'OWN' && S.residing === true)  return `T${t}-F${f}-OWN`;
+    return '';
+  }
+
+  function personId(bin, idx) {
+    // idx 0 = primary (A), 1 = B, 2 = C …
+    return `${bin}-${String.fromCharCode(65 + idx)}`;
+  }
+
+  function updateBIN() {
+    S.tower = document.getElementById('f-tower').value;
+    S.flat  = document.getElementById('f-flat').value;
+    S.bin = makeBIN();
+    const dv = document.getElementById('bin-display');
+    const wrap = document.getElementById('bin-wrap');
+    const badgeBin = document.getElementById('badge-bin');
+    if (S.bin) {
+      dv.textContent = S.bin;
+      wrap.style.display = 'block';
+      if (badgeBin) badgeBin.textContent = S.bin;
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  function setResiding(val) {
+    S.residing = val;
+    document.getElementById('yn-yes').className = 'yn' + (val === true  ? ' sel-yes' : '');
+    document.getElementById('yn-no').className  = 'yn' + (val === false ? ' sel-no'  : '');
+    updateBIN();
+  }
+
+  // ────────────────────────────────────────
+  // FILE HANDLERS
+  // ────────────────────────────────────────
+  function handleFile(key, input, uzId) {
+    const file = input.files[0]; if (!file) return;
+    S.primary.files[key] = file;
+    document.getElementById('fn-' + key).textContent = '✔ ' + file.name;
+    document.getElementById(uzId).classList.add('has-file');
+  }
+
+  function handlePhoto(input) {
+    const file = input.files[0]; if (!file) return;
+    S.primary.files.photo = file;
+    document.getElementById('fn-photo').textContent = '✔ ' + file.name;
+    document.getElementById('uz-photo').classList.add('has-file');
+    const thumb = document.getElementById('photo-thumb');
+    const rd = new FileReader();
+    rd.onload = e => { thumb.src = e.target.result; thumb.style.display = 'block'; };
+    rd.readAsDataURL(file);
+  }
+
+  function handleIdType() {
+    const v = document.getElementById('f-idtype').value;
+    document.getElementById('idother-wrap').style.display = v === 'Other' ? 'flex' : 'none';
+
+    const noWrap = document.getElementById('idno-wrap');
+    const noLbl  = document.getElementById('idno-lbl');
+    const noInp  = document.getElementById('f-idno');
+    if (v) {
+      noWrap.style.display = 'block';
+      const labels = {
+        'Aadhaar Card':    'Aadhaar Number (12 digits)',
+        'PAN Card':        'PAN Number',
+        'Driving Licence': 'Driving Licence Number',
+        'Voter ID Card':   'Voter ID / EPIC Number',
+        'Passport':        'Passport Number',
+        'Other':           'Document Number',
+      };
+      const phs = {
+        'Aadhaar Card':    'XXXX XXXX XXXX',
+        'PAN Card':        'e.g. ABCDE1234F',
+        'Driving Licence': 'DL number as printed on card',
+        'Voter ID Card':   'As printed on Voter ID card',
+        'Passport':        'e.g. A1234567',
+        'Other':           'Enter document number',
+      };
+      noLbl.innerHTML = `${labels[v] || 'Document Number'} <span class="req">*</span>`;
+      noInp.placeholder = phs[v] || 'Enter document number';
+    } else {
+      noWrap.style.display = 'none';
+      noInp.value = '';
+    }
+  }
+
+  // ────────────────────────────────────────
+  // FAMILY MEMBERS
+  // ────────────────────────────────────────
+  function addMember() {
+    const idx = S.members.length;
+    const id = personId(S.bin, idx + 1); // +1 because A=primary
+    S.members.push({ id, name: '', idNo: '', files: {} });
+    renderMembers();
+  }
+
+  function removeMember(i) {
+    S.members.splice(i, 1);
+    // Reassign IDs
+    S.members.forEach((m, j) => m.id = personId(S.bin, j + 1));
+    renderMembers();
+  }
+
+  function renderMembers() {
+    const cont = document.getElementById('members-container');
+    cont.innerHTML = '';
+    S.members.forEach((m, i) => {
+      const div = document.createElement('div');
+      div.className = 'mem-card';
+      div.innerHTML = `
+        <div class="mem-hd">
+          <div>
+            <div class="mem-id">Member ID: ${m.id}</div>
+          </div>
+          <button class="btn mem-rm" onclick="APP.removeMember(${i})">✕ Remove</button>
+        </div>
+        <div class="g2">
+          <div class="fg full">
+            <label class="lbl">Full Name <span class="req">*</span></label>
+            <input type="text" id="mem-name-${i}" class="inp" placeholder="Full name" value="${m.name}"
+              onchange="S_updateMemberName(${i}, this.value)">
+          </div>
+          <div class="fg full">
+            <label class="lbl">Identification Document Number</label>
+            <input type="text" id="mem-idno-${i}" class="inp" placeholder="Aadhaar / PAN / DL / Passport number" value="${m.idNo||''}"
+              onchange="S_updateMemberIdNo(${i}, this.value)">
+          </div>
+          <div class="fg">
+            <label class="lbl">Photograph</label>
+            <div class="uz ${m.files.photo ? 'has-file' : ''}" id="uz-mp-${i}">
+              <input type="file" accept="image/*" onchange="APP.memberFile(${i},'photo',this,'uz-mp-${i}','mfn-p-${i}')">
+              <div class="ui">📷</div><div class="ut"><strong>Upload photo</strong></div>
+              <div class="file-name" id="mfn-p-${i}">${m.files.photo ? '✔ ' + m.files.photo.name : ''}</div>
+            </div>
+          </div>
+          <div class="fg">
+            <label class="lbl">Identification Document</label>
+            <div class="uz ${m.files.iddoc ? 'has-file' : ''}" id="uz-mi-${i}">
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.memberFile(${i},'iddoc',this,'uz-mi-${i}','mfn-i-${i}')">
+              <div class="ui">🪪</div><div class="ut"><strong>Upload ID</strong><br>Aadhaar, PAN etc.</div>
+              <div class="file-name" id="mfn-i-${i}">${m.files.iddoc ? '✔ ' + m.files.iddoc.name : ''}</div>
+            </div>
+          </div>
+        </div>`;
+      cont.appendChild(div);
+    });
+  }
+
+  // Exposed globally for inline onchange
+  window.S_updateMemberName = (i, v) => { if (S.members[i]) S.members[i].name = v; };
+  window.S_updateMemberIdNo = (i, v) => { if (S.members[i]) S.members[i].idNo  = v; };
+
+  function memberFile(i, key, input, uzId, fnId) {
+    const file = input.files[0]; if (!file) return;
+    S.members[i].files[key] = file;
+    document.getElementById(fnId).textContent = '✔ ' + file.name;
+    document.getElementById(uzId).classList.add('has-file');
+  }
+
+  // ────────────────────────────────────────
+  // STEP NAVIGATION
+  // ────────────────────────────────────────
+  function hideAll(ids) {
+    ids.forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+  }
+
+  function goStep(n) {
+    hideAll(['step-type','step-1','step-2','step-3','step-4']);
+    document.getElementById('step-' + n).style.display = 'block';
+    setStepper(n);
+    clearFormAlert();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function setStepper(active) {
+    for (let i = 1; i <= 4; i++) {
+      const el = document.getElementById('si-' + i);
+      if (!el) continue;
+      el.className = 'st' + (i < active ? ' done' : i === active ? ' active' : '');
+    }
+  }
+
+  function next1() {
+    S.tower = document.getElementById('f-tower').value.trim();
+    S.flat  = document.getElementById('f-flat').value.trim();
+    if (!S.tower) return showFormAlert('Please enter the Tower number.');
+    if (!S.flat)  return showFormAlert('Please enter the Flat number.');
+    if (S.type === 'OWN' && S.residing === null) return showFormAlert('Please specify whether you are currently residing in this flat.');
+
+    S.bin = makeBIN();
+    if (!S.bin) return showFormAlert('Could not generate BIN. Check tower and flat.');
+
+    // Duplicate check
+    if (REGS.some(r => r.bin === S.bin)) {
+      return showFormAlert(`BIN "${S.bin}" already registered. Tower ${S.tower}, Flat ${S.flat} (${S.type}) has been registered previously.`);
+    }
+
+    updateBIN();
+
+    // Reassign member IDs if any
+    S.members.forEach((m, j) => m.id = personId(S.bin, j + 1));
+
+    goStep(2);
+  }
+
+  function next2() {
+    S.primary.name = document.getElementById('f-name').value.trim();
+    if (!S.primary.name) return showFormAlert('Please enter the full name.');
+
+    if (S.type === 'OWN' && !S.primary.files.indexii) return showFormAlert('Please upload Index II.');
+    if (S.type === 'TEN') {
+      S.primary.agrNo = document.getElementById('f-agr-no').value.trim();
+      S.primary.pvNo  = document.getElementById('f-pv-no').value.trim();
+      if (!S.primary.agrNo) return showFormAlert('Please enter the Registered Agreement Number.');
+      if (!S.primary.files.agr) return showFormAlert('Please upload the Registered Agreement.');
+      if (!S.primary.pvNo) return showFormAlert('Please enter the Police Verification Number.');
+      if (!S.primary.files.pv) return showFormAlert('Please upload the Police Verification document.');
+    }
+
+    S.primary.idType = document.getElementById('f-idtype').value;
+    if (!S.primary.idType) return showFormAlert('Please select a self-identification document type.');
+    if (S.primary.idType === 'Other') {
+      S.primary.idOtherName = document.getElementById('f-idother').value.trim();
+      if (!S.primary.idOtherName) return showFormAlert('Please specify the name of the identification document.');
+    }
+    S.primary.idNo = document.getElementById('f-idno').value.trim();
+    if (!S.primary.idNo) return showFormAlert('Please enter the identification document number.');
+    if (!S.primary.files.iddoc) return showFormAlert('Please upload the identification document.');
+    if (!S.primary.files.photo) return showFormAlert('Please upload a passport-size photograph.');
+
+    S.primary.mobile = document.getElementById('f-mobile').value.trim();
+    S.primary.email  = document.getElementById('f-email').value.trim();
+    if (!S.primary.mobile || !/^\d{10}$/.test(S.primary.mobile)) return showFormAlert('Please enter a valid 10-digit mobile number.');
+    if (!S.primary.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(S.primary.email)) return showFormAlert('Please enter a valid email address.');
+
+    goStep(3);
+  }
+
+  function next3() {
+    // Validate member names
+    for (let i = 0; i < S.members.length; i++) {
+      const nameEl = document.getElementById('mem-name-' + i);
+      const idnoEl = document.getElementById('mem-idno-' + i);
+      if (nameEl) S.members[i].name = nameEl.value.trim();
+      if (idnoEl) S.members[i].idNo = idnoEl.value.trim();
+      if (!S.members[i].name) return showFormAlert(`Please enter the name for family member ${i + 1}.`);
+    }
+    buildReview();
+    goStep(4);
+  }
+
+  // ────────────────────────────────────────
+  // REVIEW
+  // ────────────────────────────────────────
+  function buildReview() {
+    const typeLabel = S.type === 'OWN' ? (S.residing ? 'Owner (Residing)' : 'Owner (Not Residing)') : 'Tenant';
+    const idLabel = S.primary.idType === 'Other' ? S.primary.idOtherName : S.primary.idType;
+    const primaryId = personId(S.bin, 0);
+
+    let docLine = '';
+    if (S.type === 'OWN') {
+      docLine = `<div><div class="rv-l">Index II</div><div class="rv-v">${S.primary.files.indexii?.name || '—'}</div></div>`;
+    } else {
+      docLine = `
+        <div><div class="rv-l">Agreement No.</div><div class="rv-v">${S.primary.agrNo}</div></div>
+        <div><div class="rv-l">Agreement File</div><div class="rv-v">${S.primary.files.agr?.name || '—'}</div></div>
+        <div><div class="rv-l">Police Verif. No.</div><div class="rv-v">${S.primary.pvNo}</div></div>
+        <div><div class="rv-l">Police Verif. File</div><div class="rv-v">${S.primary.files.pv?.name || '—'}</div></div>`;
+    }
+
+    let membersHtml = '';
+    if (S.members.length) {
+      membersHtml = `<div class="rv-sec">
+        <div class="rv-t">Family Members (${S.members.length})</div>
+        ${S.members.map(m => `
+          <div style="background:#f5f5f0;border-radius:7px;padding:9px 12px;margin-bottom:7px">
+            <div style="font-size:.7rem;font-weight:700;color:var(--nv2);margin-bottom:4px">ID: ${m.id}</div>
+            <div class="rv-g">
+              <div><div class="rv-l">Name</div><div class="rv-v">${m.name}</div></div>
+              <div><div class="rv-l">ID Number</div><div class="rv-v">${m.idNo || '—'}</div></div>
+              <div><div class="rv-l">Photo</div><div class="rv-v">${m.files.photo?.name || 'Not uploaded'}</div></div>
+              <div><div class="rv-l">ID Document</div><div class="rv-v">${m.files.iddoc?.name || 'Not uploaded'}</div></div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+    }
+
+    document.getElementById('review-content').innerHTML = `
+      <div class="rv-sec">
+        <div class="rv-t">Property & BIN</div>
+        <div class="rv-g">
+          <div><div class="rv-l">Registration Type</div><div class="rv-v">${typeLabel}</div></div>
+          <div><div class="rv-l">Tower</div><div class="rv-v">${S.tower}</div></div>
+          <div><div class="rv-l">Flat / Unit</div><div class="rv-v">${S.flat}</div></div>
+          <div><div class="rv-l">Generated BIN</div><div class="rv-v"><strong style="color:var(--nv);font-size:.95rem">${S.bin}</strong></div></div>
+        </div>
+      </div>
+      <div class="rv-sec">
+        <div class="rv-t">Primary Member — ID: ${primaryId}</div>
+        <div class="rv-g">
+          <div><div class="rv-l">Full Name</div><div class="rv-v">${S.primary.name}</div></div>
+          <div><div class="rv-l">Mobile</div><div class="rv-v">${S.primary.mobile}</div></div>
+          <div><div class="rv-l">Email</div><div class="rv-v">${S.primary.email}</div></div>
+          <div><div class="rv-l">Identification</div><div class="rv-v">${idLabel}</div></div>
+          <div><div class="rv-l">Document Number</div><div class="rv-v">${S.primary.idNo || '—'}</div></div>
+          ${docLine}
+          <div><div class="rv-l">ID Document</div><div class="rv-v">${S.primary.files.iddoc?.name || '—'}</div></div>
+          <div><div class="rv-l">Photograph</div><div class="rv-v">${S.primary.files.photo?.name || '—'}</div></div>
+        </div>
+      </div>
+      ${membersHtml}`;
+  }
+
+  // ────────────────────────────────────────
+  // SUBMIT
+  // ────────────────────────────────────────
+  async function submit() {
+    const btn = document.getElementById('sub-btn');
+    btn.disabled = true; btn.textContent = '⏳ Please wait…';
+
+    // Final duplicate check
+    if (REGS.some(r => r.bin === S.bin)) {
+      showFormAlert(`BIN "${S.bin}" already registered.`);
+      btn.disabled = false; btn.textContent = '✅ Confirm & Register';
+      return;
+    }
+
+    // Switch to processing view
+    showView('view-processing');
+    const log = [];
+    function addLog(msg, status = 'pending') {
+      log.push({ msg, status });
+      renderLog(log);
+    }
+    function updateLog(i, status) {
+      if (log[i]) { log[i].status = status; renderLog(log); }
+    }
+
+    const typeLabel = S.type === 'OWN' ? (S.residing ? 'Owner (Residing)' : 'Owner (Not Residing)') : 'Tenant';
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+    const primaryId = personId(S.bin, 0);
+
+    // Build registration record
+    const reg = {
+      bin: S.bin, tower: S.tower, flat: S.flat,
+      type: S.type, typeLabel, residing: S.residing,
+      primary: {
+        id: primaryId,
+        name: S.primary.name, mobile: S.primary.mobile, email: S.primary.email,
+        idType: S.primary.idType === 'Other' ? S.primary.idOtherName : S.primary.idType,
+        idNo: S.primary.idNo || '',
+        agrNo: S.primary.agrNo || '', pvNo: S.primary.pvNo || '',
+        fileNames: Object.fromEntries(Object.entries(S.primary.files).map(([k,v])=>[k,v?.name||''])),
+      },
+      members: S.members.map(m => ({
+        id: m.id, name: m.name, idNo: m.idNo || '',
+        fileNames: { photo: m.files.photo?.name||'', iddoc: m.files.iddoc?.name||'' },
+      })),
+      ts: now.toISOString(), dateStr,
+      driveFolderId: '', driveFolderUrl: '',
+    };
+
+    // ── 1. Google Auth ──
+    let driveOk = false;
+    let i0 = log.length;
+    addLog('Connecting to Google Drive & Gmail…');
+
+    if (CFG.googleClientId) {
+      const authRes = await authorizeGoogle();
+      if (authRes.ok) {
+        updateLog(i0, 'done');
+        driveOk = true;
+      } else {
+        updateLog(i0, 'err');
+        addLog('Google auth failed — skipping Drive & email. Registration saved locally.', 'err');
+      }
+    } else {
+      updateLog(i0, 'err');
+      addLog('Google Client ID not configured — skipping Drive & email. Registration saved locally.', 'err');
+    }
+
+    // ── 2. Drive folder structure ──
+    if (driveOk) {
+      let iD = log.length;
+      addLog('Creating Google Drive folder structure…');
+      try {
+        const rootId = await getOrCreateFolder(CFG.driveRootName);
+        const binId  = await getOrCreateFolder(S.bin, rootId);
+        const typeFolder = S.type === 'OWN' ? 'Owner' : 'Tenant';
+        const typeFoldId = await getOrCreateFolder(typeFolder, binId);
+
+        // Primary person folder
+        const primFoldId = await getOrCreateFolder(primaryId, typeFoldId);
+        updateLog(iD, 'done');
+
+        // Upload primary files
+        let iU = log.length;
+        addLog('Uploading primary member documents…');
+        for (const [key, file] of Object.entries(S.primary.files)) {
+          if (file) {
+            const label = { indexii:'IndexII', agr:'Agreement', pv:'PoliceVerification', iddoc:'ID_Document', photo:'Photo' };
+            const ext = file.name.split('.').pop();
+            await uploadFileToDrive(`${label[key]||key}.${ext}`, file, primFoldId);
+          }
+        }
+        updateLog(iU, 'done');
+
+        // Family member folders + uploads
+        for (const m of S.members) {
+          let iM = log.length;
+          addLog(`Uploading documents for ${m.name} (${m.id})…`);
+          const mFoldId = await getOrCreateFolder(m.id, typeFoldId);
+          for (const [key, file] of Object.entries(m.files)) {
+            if (file) {
+              const ext = file.name.split('.').pop();
+              await uploadFileToDrive(`${key === 'photo' ? 'Photo' : 'ID_Document'}.${ext}`, file, mFoldId);
+            }
+          }
+          updateLog(iM, 'done');
+        }
+
+        // Get folder URL
+        reg.driveFolderId = binId;
+        reg.driveFolderUrl = `https://drive.google.com/drive/folders/${binId}`;
+        lastDriveFolderUrl = reg.driveFolderUrl;
+
+      } catch(e) {
+        updateLog(iD, 'err');
+        addLog('Drive upload error: ' + e.message, 'err');
+        driveOk = false;
+      }
+    }
+
+    // ── 3. Generate PDF ──
+    let iPdf = log.length;
+    addLog('Generating registration PDF…');
+    let pdfDataUrl = null;
+    try {
+      pdfDataUrl = generatePDF(reg);
+      lastPdfDataUrl = pdfDataUrl;
+      updateLog(iPdf, 'done');
+    } catch(e) {
+      updateLog(iPdf, 'err');
+      addLog('PDF generation error: ' + e.message, 'err');
+    }
+
+    // ── 4. Send email ──
+    if (driveOk && pdfDataUrl) {
+      let iEm = log.length;
+      addLog(`Sending email to ${reg.primary.email} and ${CFG.adminEmail}…`);
+      try {
+        const subject = `[${CFG.societyName}] Registration Certificate — BIN: ${reg.bin} | ${reg.primary.name}`;
+        const body = buildEmailBody(reg);
+        const pdfBase64 = pdfDataUrl.split(',')[1];
+        const pdfName = `${reg.bin}_Registration.pdf`;
+        await sendGmail(reg.primary.email, CFG.adminEmail, subject, body, pdfBase64, pdfName);
+        updateLog(iEm, 'done');
+      } catch(e) {
+        updateLog(iEm, 'err');
+        addLog('Email error: ' + e.message + '. Try using the download button on success screen.', 'err');
+      }
+    }
+
+    // ── 5. Save locally ──
+    let iSv = log.length;
+    addLog('Saving registration record…');
+    REGS.push(reg);
+    saveRegs();
+    updateLog(iSv, 'done');
+
+    // Reset state for next submission
+    btn.disabled = false; btn.textContent = '✅ Confirm & Register';
+
+    // Show success
+    setTimeout(() => showSuccess(reg), 800);
+  }
+
+  // ────────────────────────────────────────
+  // GOOGLE DRIVE API
+  // ────────────────────────────────────────
+  async function driveRequest(path, method = 'GET', body = null, headers = {}) {
+    const r = await fetch(`https://www.googleapis.com/drive/v3${path}`, {
+      method,
+      headers: { 'Authorization': `Bearer ${gToken}`, ...headers },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || `Drive API error ${r.status}`);
+    return d;
+  }
+
+  async function findFolder(name, parentId) {
+    let q = `name='${name.replace(/'/g,"\\'")}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    if (parentId) q += ` and '${parentId}' in parents`;
+    const enc = encodeURIComponent(q);
+    const d = await driveRequest(`/files?q=${enc}&fields=files(id,name)`, 'GET', null,
+      { 'Content-Type': 'application/json' });
+    return d.files?.[0]?.id || null;
+  }
+
+  async function createFolder(name, parentId) {
+    const body = { name, mimeType: 'application/vnd.google-apps.folder', parents: parentId ? [parentId] : [] };
+    const d = await driveRequest('/files', 'POST', body, { 'Content-Type': 'application/json' });
+    return d.id;
+  }
+
+  async function getOrCreateFolder(name, parentId = null) {
+    const ex = await findFolder(name, parentId);
+    return ex || createFolder(name, parentId);
+  }
+
+  async function uploadFileToDrive(name, file, parentId) {
+    const meta = { name, parents: [parentId] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', file);
+    const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${gToken}` },
+      body: form,
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error?.message || 'Upload failed');
+    return d.id;
+  }
+
+  // ────────────────────────────────────────
+  // GMAIL API
+  // ────────────────────────────────────────
+  async function sendGmail(toUser, toAdmin, subject, bodyText, pdfBase64, pdfName) {
+    const combined = `${toUser},${toAdmin}`;
+    const boundary = 'br_boundary_' + Date.now();
+    const raw = [
+      `To: ${combined}`,
+      `Subject: ${subject}`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      `Content-Type: text/plain; charset=UTF-8`,
+      `Content-Transfer-Encoding: quoted-printable`,
+      '',
+      bodyText,
+      '',
+      `--${boundary}`,
+      `Content-Type: application/pdf; name="${pdfName}"`,
+      `Content-Disposition: attachment; filename="${pdfName}"`,
+      `Content-Transfer-Encoding: base64`,
+      '',
+      pdfBase64,
+      '',
+      `--${boundary}--`,
+    ].join('\r\n');
+
+    const encoded = btoa(unescape(encodeURIComponent(raw)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+    const r = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${gToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ raw: encoded }),
+    });
+    if (!r.ok) {
+      const d = await r.json();
+      throw new Error(d.error?.message || 'Gmail send failed');
+    }
+  }
+
+  function buildEmailBody(reg) {
+    const lines = [
+      `══════════════════════════════════════════`,
+      `${CFG.societyName.toUpperCase()} — RESIDENT REGISTRATION CERTIFICATE`,
+      `══════════════════════════════════════════`,
+      '',
+      `BIN : ${reg.bin}`,
+      `Type: ${reg.typeLabel}`,
+      `Date: ${reg.dateStr}`,
+      '',
+      `── PROPERTY ──────────────────────────────`,
+      `Tower : ${reg.tower}   Flat : ${reg.flat}`,
+      '',
+      `── PRIMARY MEMBER (ID: ${reg.primary.id}) ────────`,
+      `Name      : ${reg.primary.name}`,
+      `Mobile    : ${reg.primary.mobile}`,
+      `Email     : ${reg.primary.email}`,
+      `ID Type   : ${reg.primary.idType}`,
+      `ID Number : ${reg.primary.idNo || '—'}`,
+    ];
+
+    if (reg.type === 'TEN') {
+      lines.push(`Agr. No.  : ${reg.primary.agrNo}`);
+      lines.push(`Police V. : ${reg.primary.pvNo}`);
+    }
+
+    if (reg.members.length) {
+      lines.push('', `── FAMILY MEMBERS ────────────────────────`);
+      reg.members.forEach(m => lines.push(`${m.id} : ${m.name}${m.idNo ? '  ['+m.idNo+']' : ''}`));
+    }
+
+    if (reg.driveFolderUrl) {
+      lines.push('', `── DOCUMENTS ─────────────────────────────`);
+      lines.push(`Drive Folder: ${reg.driveFolderUrl}`);
+    }
+
+    lines.push('', `══════════════════════════════════════════`);
+    lines.push(`This is a system-generated email from ${CFG.societyName} Resident Registry.`);
+    return lines.join('\n');
+  }
+
+  // ────────────────────────────────────────
+  // PDF GENERATION
+  // ────────────────────────────────────────
+  function generatePDF(reg) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, L = 297;
+    const M = 18;
+
+    // Header band
+    doc.setFillColor(27, 45, 85);
+    doc.rect(0, 0, W, 34, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(200, 164, 74);
+    doc.text(CFG.societyName.toUpperCase(), W/2, 13, { align: 'center' });
+
+    doc.setFontSize(9);
+    doc.setTextColor(200, 210, 230);
+    doc.text('RESIDENT REGISTRATION CERTIFICATE', W/2, 20, { align: 'center' });
+
+    doc.setFontSize(8);
+    doc.setTextColor(140, 160, 200);
+    doc.text(`Registered: ${reg.dateStr}`, W/2, 27, { align: 'center' });
+
+    // BIN box
+    doc.setFillColor(253, 247, 232);
+    doc.setDrawColor(200, 164, 74);
+    doc.roundedRect(M, 40, W-M*2, 18, 2, 2, 'FD');
+    doc.setFontSize(7.5);
+    doc.setTextColor(120, 90, 10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('BIOMETRIC IDENTITY NUMBER (BIN)', W/2, 47, { align: 'center' });
+    doc.setFontSize(17);
+    doc.setFont('courier', 'bold');
+    doc.setTextColor(27, 45, 85);
+    doc.text(reg.bin, W/2, 54, { align: 'center' });
+
+    // Helper: section header
+    let y = 66;
+    function sectionHd(label) {
+      doc.setFillColor(240, 243, 250);
+      doc.rect(M, y, W-M*2, 7, 'F');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(27, 45, 85);
+      doc.text(label, M+3, y+5);
+      y += 10;
+    }
+
+    function row(label, value) {
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(100);
+      doc.text(label + ':', M+3, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(30);
+      doc.text(String(value || '—'), M+60, y);
+      y += 6;
+      if (y > 270) { doc.addPage(); y = 20; }
+    }
+
+    sectionHd('PROPERTY DETAILS');
+    row('Tower', reg.tower);
+    row('Flat / Unit', reg.flat);
+    row('Type', reg.typeLabel);
+    y += 2;
+
+    sectionHd(`PRIMARY MEMBER  (ID: ${reg.primary.id})`);
+    row('Full Name', reg.primary.name);
+    row('Mobile', reg.primary.mobile);
+    row('Email', reg.primary.email);
+    row('Identification', reg.primary.idType);
+    row('Document Number', reg.primary.idNo || '—');
+    if (reg.type === 'OWN') {
+      row('Index II', reg.primary.fileNames.indexii || '—');
+    } else {
+      row('Agreement No.', reg.primary.agrNo);
+      row('Agreement File', reg.primary.fileNames.agr || '—');
+      row('Police Verif. No.', reg.primary.pvNo);
+      row('Police Verif. File', reg.primary.fileNames.pv || '—');
+    }
+    row('ID Document', reg.primary.fileNames.iddoc || '—');
+    row('Photograph', reg.primary.fileNames.photo || '—');
+    y += 2;
+
+    if (reg.members.length) {
+      sectionHd(`FAMILY MEMBERS (${reg.members.length})`);
+      reg.members.forEach(m => {
+        doc.setFontSize(8.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(27, 45, 85);
+        doc.text(`▸ ${m.id} — ${m.name}`, M+3, y);
+        y += 5;
+        if (m.idNo) { doc.setFont('helvetica','normal'); doc.setTextColor(100); doc.text(`  ID Number: ${m.idNo}`, M+6, y); y += 5; }
+        if (m.fileNames.photo) { doc.setFont('helvetica','normal'); doc.setTextColor(100); doc.text(`  Photo: ${m.fileNames.photo}`, M+6, y); y += 5; }
+        if (m.fileNames.iddoc) { doc.setFont('helvetica','normal'); doc.setTextColor(100); doc.text(`  ID Document: ${m.fileNames.iddoc}`, M+6, y); y += 5; }
+        y += 1;
+        if (y > 270) { doc.addPage(); y = 20; }
+      });
+    }
+
+    if (reg.driveFolderUrl) {
+      y += 2;
+      sectionHd('DOCUMENT STORAGE');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(26, 79, 168);
+      doc.text(reg.driveFolderUrl, M+3, y);
+      y += 8;
+    }
+
+    // Footer
+    doc.setFillColor(27, 45, 85);
+    doc.rect(0, 283, W, 14, 'F');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(180, 190, 210);
+    doc.text(`${CFG.societyName} Resident Registry  •  System Generated  •  ${reg.dateStr}`, W/2, 291, { align: 'center' });
+    doc.setTextColor(200, 164, 74);
+    doc.text(`BIN: ${reg.bin}`, W/2, 293.5, { align: 'center' });
+
+    return doc.output('datauristring');
+  }
+
+  // ────────────────────────────────────────
+  // PROCESS LOG RENDER
+  // ────────────────────────────────────────
+  function renderLog(log) {
+    const ic = { pending: '⏳', done: '✅', err: '❌' };
+    document.getElementById('proc-log').innerHTML = log.map(l =>
+      `<div class="proc-log-item ${l.status}"><span class="pi">${ic[l.status]||'⏳'}</span>${l.msg}</div>`
+    ).join('');
+    const logEl = document.getElementById('proc-log');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  // ────────────────────────────────────────
+  // SUCCESS
+  // ────────────────────────────────────────
+  function showSuccess(reg) {
+    showView('view-success');
+    document.getElementById('suc-bin').textContent = reg.bin;
+    document.getElementById('suc-details').innerHTML = `
+      <div class="rv-g" style="margin-top:6px">
+        <div><div class="rv-l">Name</div><div class="rv-v">${reg.primary.name}</div></div>
+        <div><div class="rv-l">Tower / Flat</div><div class="rv-v">Tower ${reg.tower}, Flat ${reg.flat}</div></div>
+        <div><div class="rv-l">Type</div><div class="rv-v">${reg.typeLabel}</div></div>
+        <div><div class="rv-l">Date</div><div class="rv-v">${reg.dateStr}</div></div>
+        <div><div class="rv-l">Email sent to</div><div class="rv-v">${reg.primary.email}</div></div>
+        ${reg.driveFolderUrl ? `<div><div class="rv-l">Drive Folder</div><div class="rv-v">${reg.bin}</div></div>` : ''}
+      </div>`;
+
+    const dlBtn = document.getElementById('suc-dl-btn');
+    dlBtn.onclick = () => {
+      if (lastPdfDataUrl) {
+        const a = document.createElement('a');
+        a.href = lastPdfDataUrl;
+        a.download = `${reg.bin}_Registration.pdf`;
+        a.click();
+      }
+    };
+
+    const drvBtn = document.getElementById('suc-drive-btn');
+    if (reg.driveFolderUrl) {
+      drvBtn.style.display = 'flex';
+      drvBtn.onclick = () => window.open(reg.driveFolderUrl, '_blank');
+    }
+  }
+
+  // ────────────────────────────────────────
+  // ADMIN
+  // ────────────────────────────────────────
+  function openAdminLogin() {
+    document.getElementById('adm-pw-inp').value = '';
+    document.getElementById('adm-modal-err').style.display = 'none';
+    document.getElementById('modal-admin').classList.add('open');
+    setTimeout(() => document.getElementById('adm-pw-inp').focus(), 100);
+  }
+
+  function adminLogin() {
+    const pw = document.getElementById('adm-pw-inp').value;
+    if (pw === CFG.adminPw) {
+      closeModal('modal-admin');
+      loadRegs();
+      loadDeleted();
+      showView('view-admin');
+      adminTab('records');
+      renderAdmin();
+      // Prefill settings
+      document.getElementById('s-gcid').value  = CFG.googleClientId;
+      document.getElementById('s-admem').value = CFG.adminEmail;
+      document.getElementById('s-soc').value   = CFG.societyName;
+      document.getElementById('s-drn').value   = CFG.driveRootName;
+    } else {
+      const e = document.getElementById('adm-modal-err');
+      e.textContent = 'Incorrect password. Default: blueridge@123';
+      e.style.display = 'flex';
+    }
+  }
+
+  function closeAdmin() {
+    showView('view-form');
+    document.getElementById('step-type').style.display = 'block';
+    document.getElementById('stepper').style.display = 'none';
+  }
+
+  function adminTab(tab) {
+    ['records','dellog','settings','qr'].forEach(t => {
+      document.getElementById(`adm-${t}`).style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'qr')     renderQR();
+    if (tab === 'dellog') renderDelLog();
+  }
+
+  function deleteReg(bin) {
+    const reg = REGS.find(r => r.bin === bin);
+    if (!reg) return;
+    _pendingDeleteBin = bin;
+    document.getElementById('del-info').innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-size:1.2rem">⚠️</span>
+        <strong style="color:#b91c1c">You are about to delete this registration</strong>
+      </div>
+      <table style="width:100%;font-size:.8rem;border-collapse:collapse">
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0;width:110px">BIN</td><td><strong style="font-family:monospace">${reg.bin}</strong></td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Name</td><td>${reg.primary.name}</td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Tower / Flat</td><td>Tower ${reg.tower}, Flat ${reg.flat}</td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Type</td><td>${reg.typeLabel}</td></tr>
+        <tr><td style="color:#6b7280;padding:2px 6px 2px 0">Registered</td><td>${reg.dateStr}</td></tr>
+      </table>`;
+    document.getElementById('del-reason').value = '';
+    document.getElementById('del-remarks').value = '';
+    document.getElementById('del-modal-err').style.display = 'none';
+    document.getElementById('modal-delete').classList.add('open');
+  }
+
+  function confirmDelete() {
+    const reason  = document.getElementById('del-reason').value;
+    const remarks = document.getElementById('del-remarks').value.trim();
+    if (!reason) {
+      const e = document.getElementById('del-modal-err');
+      e.textContent = 'Please select a reason for deletion.';
+      e.style.display = 'flex';
+      return;
+    }
+
+    const idx = REGS.findIndex(r => r.bin === _pendingDeleteBin);
+    if (idx === -1) { closeModal('modal-delete'); return; }
+
+    const reg = REGS[idx];
+    const now = new Date();
+
+    // Push to deletion log
+    DELETED.push({
+      bin:          reg.bin,
+      tower:        reg.tower,
+      flat:         reg.flat,
+      type:         reg.type,
+      typeLabel:    reg.typeLabel,
+      primaryName:  reg.primary.name,
+      primaryEmail: reg.primary.email,
+      primaryMobile:reg.primary.mobile,
+      memberCount:  reg.members.length,
+      registeredOn: reg.dateStr,
+      registeredTs: reg.ts,
+      deletedOn:    now.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }),
+      deletedTs:    now.toISOString(),
+      deletedTime:  now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+      reason,
+      remarks:      remarks || '—',
+      driveFolderUrl: reg.driveFolderUrl || '—',
+    });
+
+    // Remove from active
+    REGS.splice(idx, 1);
+    saveRegs();
+    saveDeleted();
+
+    closeModal('modal-delete');
+    _pendingDeleteBin = null;
+    renderAdmin();
+    // Switch to deletion log tab briefly to show it was logged
+    adminTab('dellog');
+  }
+
+  function renderDelLog() {
+    const wrap = document.getElementById('del-tbl-wrap');
+    if (!DELETED.length) {
+      wrap.innerHTML = '<div class="empty"><div style="font-size:2rem;margin-bottom:8px">🗑</div>No deletions recorded yet.</div>';
+      return;
+    }
+    // Show newest first
+    const sorted = [...DELETED].reverse();
+    wrap.innerHTML = `<table>
+      <thead><tr>
+        <th>#</th><th>BIN</th><th>Name</th><th>Tower</th><th>Flat</th>
+        <th>Type</th><th>Registered</th><th>Deleted On</th><th>Deleted At</th>
+        <th>Reason</th><th>Remarks</th>
+      </tr></thead>
+      <tbody>${sorted.map((d, i) => `<tr>
+        <td style="color:var(--mut);font-size:.7rem">${DELETED.length - i}</td>
+        <td><strong style="font-family:monospace;font-size:.73rem;color:#b91c1c">${d.bin}</strong></td>
+        <td>${d.primaryName}</td>
+        <td style="text-align:center">${d.tower}</td>
+        <td>${d.flat}</td>
+        <td><span class="bdg ${d.type==='OWN'?'b-own':'b-ten'}">${d.type}</span></td>
+        <td style="font-size:.72rem;white-space:nowrap">${d.registeredOn}</td>
+        <td style="font-size:.72rem;white-space:nowrap;color:#b91c1c;font-weight:600">${d.deletedOn}</td>
+        <td style="font-size:.68rem;color:var(--mut);white-space:nowrap">${d.deletedTime}</td>
+        <td style="font-size:.73rem;max-width:140px">${d.reason}</td>
+        <td style="font-size:.72rem;color:var(--mut);max-width:110px">${d.remarks}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  function renderAdmin() {
+    const own = REGS.filter(r => r.type === 'OWN').length;
+    const ten = REGS.filter(r => r.type === 'TEN').length;
+    document.getElementById('st-total').textContent = REGS.length;
+    document.getElementById('st-own').textContent = own;
+    document.getElementById('st-ten').textContent = ten;
+    document.getElementById('adm-ts').textContent = REGS.length
+      ? `${REGS.length} active registration${REGS.length>1?'s':''}${DELETED.length ? ' · ' + DELETED.length + ' deletion' + (DELETED.length>1?'s':'') + ' logged' : ''}`
+      : `No active registrations${DELETED.length ? ' · ' + DELETED.length + ' deletion' + (DELETED.length>1?'s':'') + ' in log' : ''}`;
+
+    const wrap = document.getElementById('adm-tbl-wrap');
+    if (!REGS.length) {
+      wrap.innerHTML = '<div class="empty"><div style="font-size:2rem;margin-bottom:8px">📋</div>No registrations yet.</div>';
+      return;
+    }
+
+    wrap.innerHTML = `<table>
+      <thead><tr>
+        <th>BIN</th><th>Name</th><th>Tower</th><th>Flat</th>
+        <th>Type</th><th>Mobile</th><th>Email</th><th>Members</th><th>Date</th><th>Action</th>
+      </tr></thead>
+      <tbody>${REGS.map(r => `<tr>
+        <td><strong style="font-family:monospace;font-size:.75rem;color:var(--nv)">${r.bin}</strong></td>
+        <td>${r.primary.name}</td>
+        <td style="text-align:center">${r.tower}</td>
+        <td>${r.flat}</td>
+        <td><span class="bdg ${r.type==='OWN'?'b-own':'b-ten'}">${r.type}</span></td>
+        <td>${r.primary.mobile}</td>
+        <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem">${r.primary.email}</td>
+        <td style="text-align:center">${r.members.length + 1}</td>
+        <td style="font-size:.72rem;white-space:nowrap">${r.dateStr}</td>
+        <td><button class="del-btn" onclick="APP.deleteReg('${r.bin}')">🗑 Delete</button></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  function saveSettings() {
+    const cid = document.getElementById('s-gcid').value.trim();
+    const em  = document.getElementById('s-admem').value.trim();
+    const soc = document.getElementById('s-soc').value.trim();
+    const pw  = document.getElementById('s-pw').value;
+    const drn = document.getElementById('s-drn').value.trim();
+    if (cid) { CFG.googleClientId = cid; loadGoogleIdentity(); }
+    if (em)  CFG.adminEmail = em;
+    if (soc) CFG.societyName = soc;
+    if (pw)  CFG.adminPw = pw;
+    if (drn) CFG.driveRootName = drn;
+    saveCfg();
+    checkSetupBanner();
+    document.getElementById('s-pw').value = '';
+    alert('Settings saved!');
+  }
+
+  function clearAllData() {
+    if (!confirm('⚠️ This will permanently DELETE all registrations. Cannot be undone.\n\nConfirm?')) return;
+    REGS = [];
+    saveRegs();
+    renderAdmin();
+    alert('All registration data cleared.');
+  }
+
+  function renderQR() {
+    const url = window.location.href.split('#')[0];
+    document.getElementById('qr-content').innerHTML = `
+      <img src="https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(url)}&size=200x200&margin=10&color=1b2d55&bgcolor=ffffff"
+        alt="QR Code" width="200" height="200" style="margin-bottom:12px"
+        onerror="this.outerHTML='<div style=\\'color:rgba(255,255,255,.4);padding:20px\\'>QR generator unavailable. Use the URL below.</div>'">
+      <div class="qr-url">${url}</div>
+      <div style="font-size:.7rem;color:rgba(255,255,255,.3)">
+        Mobile: Scan QR code with camera &nbsp;|&nbsp; Desktop: Share the URL above
+      </div>`;
+  }
+
+  // ────────────────────────────────────────
+  // EXCEL EXPORT
+  // ────────────────────────────────────────
+  function exportExcel() {
+    if (!REGS.length) { alert('No registrations to export.'); return; }
+
+    const rows = REGS.map(r => ({
+      'BIN':              r.bin,
+      'Type':             r.typeLabel,
+      'Tower':            r.tower,
+      'Flat':             r.flat,
+      'Residing':         r.residing === null ? 'N/A' : r.residing ? 'Yes' : 'No',
+      'Primary ID':       r.primary.id,
+      'Full Name':        r.primary.name,
+      'Mobile':           r.primary.mobile,
+      'Email':            r.primary.email,
+      'ID Document':      r.primary.idType,
+      'ID Number':        r.primary.idNo || '—',
+      'Agreement No':     r.primary.agrNo || '—',
+      'Police Verif No':  r.primary.pvNo  || '—',
+      'Family Members':   r.members.length,
+      'Member IDs':       r.members.map(m => m.id).join(' | ') || '—',
+      'Member Names':     r.members.map(m => m.name).join(' | ') || '—',
+      'Member ID Nos':    r.members.map(m => m.idNo ? `${m.id}:${m.idNo}` : m.id).join(' | ') || '—',
+      'Drive Folder':     r.driveFolderUrl || '—',
+      'Registration Date': r.dateStr,
+      'Timestamp':        r.ts,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      {wch:22},{wch:18},{wch:7},{wch:10},{wch:9},{wch:18},{wch:24},
+      {wch:14},{wch:28},{wch:16},{wch:16},{wch:16},{wch:8},
+      {wch:22},{wch:30},{wch:40},{wch:14},{wch:22},
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Registrations');
+
+    // Summary sheet
+    const sum = XLSX.utils.aoa_to_sheet([
+      [`${CFG.societyName} — Registry Summary`],
+      ['Generated', new Date().toLocaleString('en-IN')],
+      [],
+      ['Total Registrations', REGS.length],
+      ['Owners', REGS.filter(r=>r.type==='OWN').length],
+      ['Tenants', REGS.filter(r=>r.type==='TEN').length],
+      ['Total Persons', REGS.reduce((a,r) => a + 1 + r.members.length, 0)],
+    ]);
+    sum['!cols'] = [{wch:24},{wch:22}];
+    XLSX.utils.book_append_sheet(wb, sum, 'Summary');
+
+    // Deletion log sheet
+    if (DELETED.length) {
+      const delRows = DELETED.map((d, i) => ({
+        'Serial No': i + 1, 'BIN': d.bin, 'Tower': d.tower, 'Flat': d.flat,
+        'Type': d.typeLabel, 'Name': d.primaryName,
+        'Registered On': d.registeredOn, 'Deleted On': d.deletedOn,
+        'Deleted At': d.deletedTime, 'Reason': d.reason, 'Remarks': d.remarks,
+      }));
+      const wsDel = XLSX.utils.json_to_sheet(delRows);
+      wsDel['!cols'] = [{wch:8},{wch:22},{wch:7},{wch:10},{wch:16},{wch:24},{wch:14},{wch:14},{wch:12},{wch:30},{wch:24}];
+      XLSX.utils.book_append_sheet(wb, wsDel, 'Deletion Log');
+    }
+
+    XLSX.writeFile(wb, `${CFG.societyName.replace(/\s+/g,'_')}_Registry_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  function exportDelLogExcel() {
+    if (!DELETED.length) { alert('No deletions recorded yet.'); return; }
+    const rows = DELETED.map((d, i) => ({
+      'Serial No':         i + 1,
+      'BIN':               d.bin,
+      'Tower':             d.tower,
+      'Flat':              d.flat,
+      'Type':              d.typeLabel,
+      'Registered Name':   d.primaryName,
+      'Mobile':            d.primaryMobile,
+      'Email':             d.primaryEmail,
+      'Total Members':     d.memberCount + 1,
+      'Registered On':     d.registeredOn,
+      'Deleted On':        d.deletedOn,
+      'Deleted At':        d.deletedTime,
+      'Reason':            d.reason,
+      'Remarks':           d.remarks,
+      'Drive Folder':      d.driveFolderUrl,
+      'Deleted Timestamp': d.deletedTs,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [
+      {wch:8},{wch:22},{wch:7},{wch:10},{wch:16},{wch:24},{wch:14},
+      {wch:28},{wch:8},{wch:14},{wch:14},{wch:12},{wch:30},{wch:24},{wch:40},{wch:24},
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Deletion Log');
+    XLSX.writeFile(wb, `${CFG.societyName.replace(/\s+/g,'_')}_DeletionLog_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }
+
+  // ────────────────────────────────────────
+  // UI HELPERS
+  // ────────────────────────────────────────
+  function showView(id) {
+    ['view-form','view-processing','view-success','view-admin'].forEach(v => {
+      document.getElementById(v).style.display = v === id ? 'block' : 'none';
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function showFormAlert(msg) {
+    const el = document.getElementById('form-alert');
+    el.innerHTML = '⚠️ ' + msg;
+    el.style.display = 'flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function clearFormAlert() {
+    document.getElementById('form-alert').style.display = 'none';
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  function openSetup() {
+    openAdminLogin();
+  }
+
+  function resetAll() {
+    S = {
+      type: '', residing: null, tower: '', flat: '', bin: '',
+      primary: { name:'',mobile:'',email:'',idType:'',idOtherName:'',agrNo:'',pvNo:'',files:{} },
+      members: [],
+    };
+    lastPdfDataUrl = null;
+    lastDriveFolderUrl = null;
+
+    // Reset DOM
+    ['f-tower','f-flat','f-name','f-mobile','f-email','f-agr-no','f-pv-no','f-idother','f-idno'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('f-idtype').value = '';
+    document.getElementById('idno-wrap').style.display = 'none';
+    ['uz-indexii','uz-agr','uz-pv','uz-id','uz-photo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.classList.remove('has-file');
+    });
+    ['fn-indexii','fn-agr','fn-pv','fn-iddoc','fn-photo'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = '';
+    });
+    document.getElementById('photo-thumb').style.display = 'none';
+    document.getElementById('members-container').innerHTML = '';
+    document.getElementById('idother-wrap').style.display = 'none';
+    document.getElementById('yn-yes').className = 'yn';
+    document.getElementById('yn-no').className = 'yn';
+    document.getElementById('bin-wrap').style.display = 'none';
+    document.getElementById('type-badge').className = '';
+    document.getElementById('type-badge').style.display = 'none';
+
+    goType();
+  }
+
+  // ────────────────────────────────────────
+  // EXPOSE PUBLIC API
+  // ────────────────────────────────────────
+  return {
+    init, setType, goType, goStep, updateBIN, setResiding,
+    handleFile, handlePhoto, handleIdType,
+    addMember, removeMember, memberFile, renderMembers,
+    next1, next2, next3, submit,
+    openAdminLogin, adminLogin, closeAdmin, adminTab,
+    deleteReg, confirmDelete,
+    saveSettings, clearAllData, exportExcel, exportDelLogExcel,
+    openSetup, resetAll,
+    closeModal,
+    get S() { return S; },
+  };
+})();
+
+document.addEventListener('DOMContentLoaded', () => APP.init());
+</script>
+</body>
+</html>

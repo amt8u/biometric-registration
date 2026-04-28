@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 18mm; }
+  body { font-family: Helvetica, Arial, sans-serif; color:#1a1a2e; font-size: 10pt; }
+  .band { background:#1b2d55; color:#fff; padding: 14px 20px; text-align:center; border-radius:2px; }
+  .band .t { font-size: 18pt; color:#c8a44a; letter-spacing:1px; font-weight:bold; }
+  .band .s { font-size: 10pt; color:#c8d2e6; margin-top:4px; letter-spacing:2px; }
+  .band .d { font-size: 8pt; color:#8ca0c8; margin-top:3px; }
+  .bin { margin-top:14px; border:1px solid #c8a44a; background:#fdf7e8; border-radius:4px; padding:10px 14px; text-align:center; }
+  .bin .lbl { font-size:8pt; color:#a8872e; letter-spacing:1.5px; }
+  .bin .v { font-family: Courier, monospace; font-size:18pt; color:#1b2d55; font-weight:bold; margin-top:4px; letter-spacing:3px; }
+  h3 { font-size: 10pt; background:#f0f3fa; color:#1b2d55; padding:6px 10px; margin: 16px 0 8px; border-left:3px solid #c8a44a; }
+  table.kv { width:100%; border-collapse: collapse; }
+  table.kv td { padding: 3px 8px; font-size: 9.5pt; vertical-align: top; }
+  table.kv td.k { color:#6b7280; width: 35%; font-weight: bold; }
+  .mem { background:#fafaf8; border:1px solid #e3e2da; border-radius:4px; padding:8px 12px; margin-bottom:6px; }
+  .mem .id { font-size: 9pt; color:#1b2d55; font-weight: bold; margin-bottom:2px; }
+  .mem .n { font-size: 9pt; }
+  .mem .sub { font-size: 8pt; color:#6b7280; margin-top:2px; }
+  .foot { margin-top: 22px; border-top: 1px solid #1b2d55; padding-top: 8px; text-align: center; font-size: 8pt; color:#6b7280; }
+  .foot .bin { font-size: 9pt; color:#a8872e; margin-top:3px; border:none; background:transparent; padding:0; }
+</style>
+</head>
+<body>
+<div class="band">
+  <div class="t"><?= societyName.toUpperCase() ?></div>
+  <div class="s">RESIDENT REGISTRATION CERTIFICATE</div>
+  <div class="d">Registered: <?= reg.dateStr ?></div>
+</div>
+
+<div class="bin">
+  <div class="lbl">BIOMETRIC IDENTITY NUMBER (BIN)</div>
+  <div class="v"><?= reg.bin ?></div>
+</div>
+
+<h3>PROPERTY DETAILS</h3>
+<table class="kv">
+  <tr><td class="k">Tower</td><td><?= reg.tower ?></td></tr>
+  <tr><td class="k">Flat / Unit</td><td><?= reg.flat ?></td></tr>
+  <tr><td class="k">Type</td><td><?= reg.typeLabel ?></td></tr>
+</table>
+
+<h3>PRIMARY MEMBER &nbsp;(ID: <?= reg.primary.id ?>)</h3>
+<table class="kv">
+  <tr><td class="k">Full Name</td><td><?= reg.primary.name ?></td></tr>
+  <tr><td class="k">Mobile</td><td><?= reg.primary.mobile ?></td></tr>
+  <tr><td class="k">Email</td><td><?= reg.primary.email ?></td></tr>
+  <tr><td class="k">Identification</td><td><?= reg.primary.idType ?></td></tr>
+  <tr><td class="k">Document Number</td><td><?= reg.primary.idNo || '—' ?></td></tr>
+  <? if (reg.type === 'OWN') { ?>
+    <tr><td class="k">Index II</td><td><?= reg.primary.fileNames.indexii || '—' ?></td></tr>
+  <? } else { ?>
+    <tr><td class="k">Agreement No.</td><td><?= reg.primary.agrNo ?></td></tr>
+    <tr><td class="k">Agreement File</td><td><?= reg.primary.fileNames.agr || '—' ?></td></tr>
+    <tr><td class="k">Police Verif. No.</td><td><?= reg.primary.pvNo ?></td></tr>
+    <tr><td class="k">Police Verif. File</td><td><?= reg.primary.fileNames.pv || '—' ?></td></tr>
+  <? } ?>
+  <tr><td class="k">ID Document</td><td><?= reg.primary.fileNames.iddoc || '—' ?></td></tr>
+  <tr><td class="k">Photograph</td><td><?= reg.primary.fileNames.photo || '—' ?></td></tr>
+</table>
+
+<? if (reg.members && reg.members.length) { ?>
+  <h3>FAMILY MEMBERS (<?= reg.members.length ?>)</h3>
+  <? reg.members.forEach(function(m){ ?>
+    <div class="mem">
+      <div class="id">▸ <?= m.id ?> — <?= m.name ?></div>
+      <? if (m.idNo) { ?><div class="sub">ID Number: <?= m.idNo ?></div><? } ?>
+      <? if (m.fileNames.photo) { ?><div class="sub">Photo: <?= m.fileNames.photo ?></div><? } ?>
+      <? if (m.fileNames.iddoc) { ?><div class="sub">ID Document: <?= m.fileNames.iddoc ?></div><? } ?>
+    </div>
+  <? }); ?>
+<? } ?>
+
+<? if (reg.driveFolderUrl) { ?>
+  <h3>DOCUMENT STORAGE</h3>
+  <div style="font-size:9pt;color:#1a4fa8;word-break:break-all;"><?= reg.driveFolderUrl ?></div>
+<? } ?>
+
+<div class="foot">
+  <?= societyName ?> Resident Registry &nbsp;•&nbsp; System Generated &nbsp;•&nbsp; <?= reg.dateStr ?>
+  <div class="bin">BIN: <?= reg.bin ?></div>
+</div>
+</body>
+</html>

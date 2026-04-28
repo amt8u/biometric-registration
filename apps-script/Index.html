@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Blue Ridge — Resident Registry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Nunito:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<?!= include('Stylesheet'); ?>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo-wrap">
+    <div class="logo">Blue<span>Ridge</span></div>
+    <div class="logo-sub">Resident Registry</div>
+  </div>
+  <div class="hdr-btns">
+    <button class="hbtn" onclick="APP.resetAll()">＋ New</button>
+    <button class="hbtn" onclick="APP.openAdminLogin()">🔐 Admin</button>
+  </div>
+</header>
+
+<div id="type-badge"></div>
+
+<!-- FORM VIEW -->
+<div id="view-form" class="wrap">
+  <div class="stepper" id="stepper" style="display:none">
+    <div class="st active" id="si-1"><div class="st-c">1</div><div class="st-lbl">Property</div></div>
+    <div class="st" id="si-2"><div class="st-c">2</div><div class="st-lbl">Primary</div></div>
+    <div class="st" id="si-3"><div class="st-c">3</div><div class="st-lbl">Family</div></div>
+    <div class="st" id="si-4"><div class="st-c">4</div><div class="st-lbl">Review</div></div>
+  </div>
+
+  <div id="form-alert" class="al al-err" style="display:none"></div>
+
+  <div id="step-type">
+    <div class="card">
+      <div class="card-hd">Welcome to Blue Ridge Registry</div>
+      <div class="card-sub">Please select your registration type to begin. All residents — owners and tenants — must complete this one-time registration.</div>
+      <div class="type-grid">
+        <div class="type-card own-card" onclick="APP.setType('OWN')">
+          <div class="tc-ico">🏠</div><div class="tc-t">Owner</div>
+          <div class="tc-s">I own this flat (or am co-owner). I hold Index II / Sale Deed for this property.</div>
+        </div>
+        <div class="type-card ten-card" onclick="APP.setType('TEN')">
+          <div class="tc-ico">🔑</div><div class="tc-t">Tenant</div>
+          <div class="tc-s">I am renting / leasing this flat. I have a Registered Agreement and Police Verification.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="step-1" style="display:none">
+    <div class="card">
+      <div class="card-hd">Property Details</div>
+      <div class="card-sub">Tower and flat number are used to generate your unique BIN.</div>
+      <div class="g2">
+        <div class="fg"><label class="lbl">Tower Number <span class="req">*</span></label>
+          <input type="text" id="f-tower" class="inp" placeholder="e.g. A, B, 1, 2" oninput="APP.updateBIN()"></div>
+        <div class="fg"><label class="lbl">Flat / Unit Number <span class="req">*</span></label>
+          <input type="text" id="f-flat" class="inp" placeholder="e.g. 304, G-01" oninput="APP.updateBIN()"></div>
+        <div class="fg full" id="residing-wrap" style="display:none">
+          <label class="lbl">Are you currently residing in this flat? <span class="req">*</span></label>
+          <div class="yn-wrap">
+            <div class="yn" id="yn-yes" onclick="APP.setResiding(true)">✅ Yes, I am residing</div>
+            <div class="yn" id="yn-no" onclick="APP.setResiding(false)">🚪 No, currently not residing</div>
+          </div>
+        </div>
+        <div class="fg full" id="bin-wrap" style="display:none">
+          <label class="lbl">Your BIN Number</label>
+          <div class="bin-box">
+            <div><div class="bin-lbl">Biometric Identity Number</div><div class="bin-val" id="bin-display">—</div></div>
+            <div class="bin-note">Tower · Flat · Type</div>
+          </div>
+        </div>
+      </div>
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goType()">← Change Type</button>
+        <button class="btn bp" onclick="APP.next1()">Next: Primary Member →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="step-2" style="display:none">
+    <div class="card">
+      <div id="s2-hd" class="card-hd">Primary Member Details</div>
+      <div class="card-sub" id="s2-sub">Enter details for the primary registered member of this flat.</div>
+      <div class="g2">
+        <div class="fg full">
+          <label class="lbl">Full Name <span class="req">*</span><span class="note" id="name-note"></span></label>
+          <input type="text" id="f-name" class="inp" placeholder="Full name as per official document">
+        </div>
+
+        <div id="doc-owner-wrap" class="fg full" style="display:none">
+          <label class="lbl">Upload Index II <span class="req">*</span>
+            <span class="note">Property ownership document (Index II / Sale Deed)</span></label>
+          <div class="uz" id="uz-indexii">
+            <input type="file" id="f-indexii" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('indexii',this,'uz-indexii')">
+            <div class="ui">📄</div><div class="ut"><strong>Click to upload Index II</strong><br>PDF or image file</div>
+            <div class="file-name" id="fn-indexii"></div>
+          </div>
+        </div>
+
+        <div id="doc-tenant-wrap" class="full" style="display:none">
+          <div class="g2">
+            <div class="fg full"><label class="lbl">Registered Agreement Number <span class="req">*</span></label>
+              <input type="text" id="f-agr-no" class="inp" placeholder="Registration / agreement number"></div>
+            <div class="fg full"><label class="lbl">Upload Registered Agreement <span class="req">*</span></label>
+              <div class="uz" id="uz-agr">
+                <input type="file" id="f-agr" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('agr',this,'uz-agr')">
+                <div class="ui">📋</div><div class="ut"><strong>Click to upload Agreement</strong><br>PDF or image</div>
+                <div class="file-name" id="fn-agr"></div>
+              </div>
+            </div>
+            <div class="fg"><label class="lbl">Police Verification Number <span class="req">*</span></label>
+              <input type="text" id="f-pv-no" class="inp" placeholder="Police verification ref. no."></div>
+            <div class="fg"><label class="lbl">Upload Police Verification <span class="req">*</span></label>
+              <div class="uz" id="uz-pv">
+                <input type="file" id="f-pv" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('pv',this,'uz-pv')">
+                <div class="ui">🚔</div><div class="ut"><strong>Click to upload</strong><br>PDF or image</div>
+                <div class="file-name" id="fn-pv"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fg full">
+          <label class="lbl">Self Identification Document <span class="req">*</span></label>
+          <select id="f-idtype" class="inp" onchange="APP.handleIdType()">
+            <option value="">Select document type…</option>
+            <option value="Aadhaar Card">Aadhaar Card</option>
+            <option value="PAN Card">PAN Card</option>
+            <option value="Driving Licence">Driving Licence</option>
+            <option value="Voter ID Card">Voter ID Card</option>
+            <option value="Passport">Passport</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="fg full" id="idother-wrap" style="display:none">
+          <label class="lbl">Specify Document Name <span class="req">*</span></label>
+          <input type="text" id="f-idother" class="inp" placeholder="Name of identification document">
+          <div class="nb"><span class="ast">*</span> Documents other than the listed types will be accepted subject to verification and confirmation from the Society Manager.</div>
+        </div>
+
+        <div class="fg full" id="idno-wrap" style="display:none">
+          <label class="lbl" id="idno-lbl">Document Number <span class="req">*</span></label>
+          <input type="text" id="f-idno" class="inp" placeholder="Enter your document number" autocomplete="off">
+        </div>
+
+        <div class="fg full">
+          <label class="lbl">Upload Identification Document <span class="req">*</span></label>
+          <div class="uz" id="uz-id">
+            <input type="file" id="f-iddoc" accept=".pdf,.jpg,.jpeg,.png" onchange="APP.handleFile('iddoc',this,'uz-id')">
+            <div class="ui">🪪</div><div class="ut"><strong>Click to upload ID document</strong><br>PDF or image (both sides if applicable)</div>
+            <div class="file-name" id="fn-iddoc"></div>
+          </div>
+        </div>
+
+        <div class="fg full">
+          <label class="lbl">Passport-size Photograph <span class="req">*</span></label>
+          <div class="photo-wrap">
+            <div class="uz" style="flex:1" id="uz-photo">
+              <input type="file" id="f-photo" accept="image/*" onchange="APP.handlePhoto(this)">
+              <div class="ui">📷</div><div class="ut"><strong>Click to upload photograph</strong><br>Clear face photo, JPG or PNG</div>
+              <div class="file-name" id="fn-photo"></div>
+            </div>
+            <img id="photo-thumb" class="photo-thumb" alt="Photo preview">
+          </div>
+        </div>
+
+        <div class="fg"><label class="lbl">Mobile Number <span class="req">*</span></label>
+          <input type="tel" id="f-mobile" class="inp" placeholder="10-digit mobile number" maxlength="10"></div>
+        <div class="fg"><label class="lbl">Email ID <span class="req">*</span>
+          <span class="note">Registration confirmation will be emailed here</span></label>
+          <input type="email" id="f-email" class="inp" placeholder="your@email.com"></div>
+      </div>
+
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goStep(1)">← Back</button>
+        <button class="btn bp" onclick="APP.next2()">Next: Family Members →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="step-3" style="display:none">
+    <div class="card">
+      <div class="card-hd">Family Members</div>
+      <div class="card-sub">Add all family members residing in this flat.</div>
+      <div class="al al-info">👨‍👩‍👧‍👦 Please add <strong>every family member 8 years of age and above</strong> who resides in this flat. Each member will receive a unique identification number.</div>
+    </div>
+    <div id="members-container"></div>
+    <button class="btn add-mem-btn" onclick="APP.addMember()">＋ Add Family Member</button>
+    <div class="card" style="background:#f9f8f4">
+      <div style="font-size:.78rem;color:var(--mut)">If no family members to add, click Next to proceed to the review step.</div>
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goStep(2)">← Back</button>
+        <button class="btn bp" onclick="APP.next3()">Next: Review →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="step-4" style="display:none">
+    <div class="card">
+      <div class="card-hd">Review & Submit</div>
+      <div class="card-sub">Please verify all details before final submission. Once submitted, your BIN is permanently recorded.</div>
+      <div id="review-content"></div>
+      <div class="al al-warn" style="margin-top:14px">
+        📧 On submission, all documents are uploaded to our society Google Drive and a registration PDF is emailed to you and the society manager.
+      </div>
+      <div class="nr">
+        <button class="btn bo" onclick="APP.goStep(3)">← Edit</button>
+        <button class="btn bg" id="sub-btn" onclick="APP.submit()">✅ Confirm & Register</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROCESSING -->
+<div id="view-processing" style="display:none" class="wrap">
+  <div class="card">
+    <div class="proc">
+      <div class="proc-ring"></div>
+      <div class="proc-t" id="proc-title">Processing Registration…</div>
+      <div class="proc-s" id="proc-sub">Please wait and keep this window open. Uploading documents to Google Drive.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SUCCESS -->
+<div id="view-success" style="display:none" class="wrap">
+  <div class="card">
+    <div class="suc">
+      <div class="suc-icon">✅</div>
+      <div class="suc-t">Registration Complete!</div>
+      <div class="suc-s">Welcome to the Blue Ridge community. Your registration is confirmed.</div>
+      <div class="suc-bin">
+        <div class="sl">Your Biometric Identity Number (BIN)</div>
+        <div class="sv" id="suc-bin">—</div>
+        <div class="ss">Save this number — it uniquely identifies your flat in all society records</div>
+      </div>
+      <div id="suc-details" style="text-align:left;margin-bottom:18px"></div>
+      <div class="suc-acts">
+        <button class="btn bo" id="suc-drive-btn" style="display:none">📁 Open Drive Folder</button>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn bo" style="width:100%" onclick="APP.resetAll()">＋ Register Another Resident</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN -->
+<div id="view-admin" style="display:none" class="wrap">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+    <div>
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:var(--nv)">Admin Dashboard</div>
+      <div style="font-size:.78rem;color:var(--mut)" id="adm-ts">Loading…</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('records')">📋 Records</button>
+      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('dellog')">🗑 Deletion Log</button>
+      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('settings')">⚙ Settings</button>
+      <button class="btn bg" style="font-size:.75rem;padding:7px 12px" onclick="APP.openSheet()">↗ Open Sheet</button>
+      <button class="btn br" style="font-size:.75rem;padding:7px 12px" onclick="APP.closeAdmin()">✕</button>
+    </div>
+  </div>
+
+  <div class="adm-stats">
+    <div class="as"><div class="as-n" id="st-total">0</div><div class="as-l">Total</div></div>
+    <div class="as"><div class="as-n" id="st-own">0</div><div class="as-l">Owners</div></div>
+    <div class="as"><div class="as-n" id="st-ten">0</div><div class="as-l">Tenants</div></div>
+  </div>
+
+  <div id="adm-records"><div class="card" style="padding:0;overflow:hidden"><div class="tblw" id="adm-tbl-wrap"></div></div></div>
+
+  <div id="adm-dellog" style="display:none">
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.05rem;color:var(--nv)">Deletion Log</div>
+      <div style="font-size:.75rem;color:var(--mut);margin-top:2px">Immutable audit trail — stored in the Deletion Log sheet.</div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden"><div class="tblw" id="del-tbl-wrap"></div></div>
+  </div>
+
+  <div id="adm-settings" style="display:none">
+    <div class="card">
+      <div class="card-hd" style="font-size:1.1rem;margin-bottom:3px">Settings</div>
+      <div class="card-sub">These are stored as Apps Script Properties on the server — never exposed to end users.</div>
+      <div class="sett-g">
+        <div class="fg full"><label class="lbl">Society Manager Email (receives all submissions)</label>
+          <input type="email" id="s-admem" class="inp"></div>
+        <div class="fg"><label class="lbl">Society Name</label>
+          <input type="text" id="s-soc" class="inp"></div>
+        <div class="fg"><label class="lbl">New Admin Password</label>
+          <input type="password" id="s-pw" class="inp" placeholder="Leave blank to keep current"></div>
+        <div class="fg full"><label class="lbl">Google Drive Folder ID <span class="req">*</span>
+          <span class="note">Existing folder where registration sub-folders will be created</span></label>
+          <input type="text" id="s-drid" class="inp" placeholder="e.g. 1A2B3CdEfGhIjKlMnOpQrStUvWxYz"></div>
+        <div class="fg full"><label class="lbl">Google Sheet ID <span class="req">*</span>
+          <span class="note">Existing spreadsheet that will hold all registry tabs</span></label>
+          <input type="text" id="s-shid" class="inp" placeholder="e.g. 1A2B3CdEfGhIjKlMnOpQrStUvWxYz"></div>
+      </div>
+      <div class="al al-info">
+        <div>
+          <strong>Deployment notes:</strong><br>
+          • Drive folder and tracking spreadsheet are <strong>NOT</strong> created automatically. Create them manually and paste their IDs above (or set <code>DRIVE_ROOT_ID</code> / <code>SHEET_ID</code> in Script Properties).<br>
+          • The script will create the required tabs (<em>Registrations</em>, <em>Family Members</em>, <em>Deletion Log</em>) inside the spreadsheet you provide, if they don't already exist.<br>
+          • To embed in Google Sites: deploy as Web App (Execute as: Me, Access: Anyone in workspace), then Insert → Embed → URL and paste the web-app URL.<br>
+          • All document uploads and emails happen under the deploying owner’s Google account — no end-user OAuth required.
+        </div>
+      </div>
+      <div class="nr" style="margin-top:14px">
+        <button class="btn bp" onclick="APP.saveSettings()">💾 Save Settings</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="mover" id="modal-admin">
+  <div class="modal">
+    <div class="modal-t">🔐 Admin Access</div>
+    <div class="fg" style="margin-bottom:12px">
+      <label class="lbl">Password</label>
+      <input type="password" id="adm-pw-inp" class="inp" placeholder="Enter admin password"
+             onkeydown="if(event.key==='Enter')APP.adminLogin()">
+    </div>
+    <div id="adm-modal-err" class="al al-err" style="display:none"></div>
+    <div style="display:flex;gap:10px;margin-top:8px">
+      <button class="btn bo" onclick="APP.closeModal('modal-admin')">Cancel</button>
+      <button class="btn bp" style="flex:1" onclick="APP.adminLogin()">Login →</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="mover" id="modal-delete">
+  <div class="modal">
+    <div class="modal-t" style="color:#b91c1c">🗑 Delete Registration</div>
+    <div id="del-info" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;margin-bottom:14px;font-size:.83rem;line-height:1.6"></div>
+    <div class="fg" style="margin-bottom:14px">
+      <label class="lbl">Reason for deletion <span class="req">*</span></label>
+      <select id="del-reason" class="inp">
+        <option value="">Select reason…</option>
+        <option>Resident has vacated the flat</option>
+        <option>Duplicate entry</option>
+        <option>Data entered incorrectly</option>
+        <option>Tenant lease expired</option>
+        <option>Owner sold the flat</option>
+        <option>Other (see remarks)</option>
+      </select>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label class="lbl">Remarks (optional)</label>
+      <input type="text" id="del-remarks" class="inp" placeholder="Additional notes…">
+    </div>
+    <div class="al al-warn" style="margin-bottom:14px;font-size:.78rem">
+      ⚠ This action marks the record as deleted in the tracking sheet. The deletion is permanently logged with reason and timestamp.
+    </div>
+    <div id="del-modal-err" class="al al-err" style="display:none"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn bo" onclick="APP.closeModal('modal-delete')">Cancel</button>
+      <button class="btn br" style="flex:1" onclick="APP.confirmDelete()">🗑 Confirm Delete</button>
+    </div>
+  </div>
+</div>
+
+<?!= include('JavaScript'); ?>
+</body>
+</html>
