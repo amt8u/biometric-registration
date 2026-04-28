@@ -426,8 +426,10 @@ const APP = (() => {
 
   function adminTab(tab) {
     ['records','dellog','settings'].forEach(t => {
-      const el = document.getElementById(`adm-${t}`);
-      if (el) el.style.display = t === tab ? 'block' : 'none';
+      const pane = document.getElementById(`adm-${t}`);
+      if (pane) pane.style.display = t === tab ? 'block' : 'none';
+      const btn = document.getElementById(`tab-${t}`);
+      if (btn) btn.classList.toggle('active', t === tab);
     });
     if (tab === 'dellog') renderDelLog();
   }

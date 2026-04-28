@@ -29,6 +29,11 @@ body{font-family:'Nunito','Segoe UI',sans-serif;background:var(--bg);color:var(-
 
 .wrap{max-width:720px;margin:0 auto;padding:24px 16px 48px}
 @media(min-width:768px){.wrap{padding:32px 24px 64px}}
+.wrap-wide{max-width:min(1440px,96vw)}
+
+/* Active-state for admin tab buttons (reuses .btn.bo base styles). */
+.btn.bo.active{background:var(--nv);color:#fff;border-color:var(--nv)}
+.btn.bo.active:hover{background:var(--nv2);border-color:var(--nv2)}
 
 .card{background:var(--surf);border-radius:var(--rad);padding:22px;box-shadow:var(--sh);margin-bottom:12px}
 .card-hd{font-family:'Playfair Display',Georgia,serif;font-size:1.25rem;color:var(--nv);margin-bottom:3px}

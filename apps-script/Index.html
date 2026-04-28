@@ -253,16 +253,16 @@
 </div>
 
 <!-- ADMIN -->
-<div id="view-admin" style="display:none" class="wrap">
+<div id="view-admin" style="display:none" class="wrap wrap-wide">
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
     <div>
       <div style="font-family:'Playfair Display',Georgia,serif;font-size:1.4rem;color:var(--nv)">Admin Dashboard</div>
       <div style="font-size:.78rem;color:var(--mut)" id="adm-ts">Loading…</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('records')">📋 Records</button>
-      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('dellog')">🗑 Deletion Log</button>
-      <button class="btn bo" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('settings')">⚙ Settings</button>
+      <button id="tab-records"  class="btn bo adm-tab-btn" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('records')">📋 Records</button>
+      <button id="tab-dellog"   class="btn bo adm-tab-btn" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('dellog')">🗑 Deletion Log</button>
+      <button id="tab-settings" class="btn bo adm-tab-btn" style="font-size:.75rem;padding:7px 12px" onclick="APP.adminTab('settings')">⚙ Settings</button>
       <button class="btn bg" style="font-size:.75rem;padding:7px 12px" onclick="APP.openSheet()">↗ Open Sheet</button>
       <button class="btn br" style="font-size:.75rem;padding:7px 12px" onclick="APP.closeAdmin()">✕</button>
     </div>
